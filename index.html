@@ -1,0 +1,698 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bhh-ops approvals</title>
+<style>
+  :root {
+    --bg: #12141a;
+    --bg-alt: #191c24;
+    --card-bg: #1c1f27;
+    --border: #2a2e3a;
+    --text: #e8e8ec;
+    --muted: #9aa0ac;
+    --accent: #4c8dff;
+    --green: #2ecc71;
+    --green-bg: #16301f;
+    --amber: #f5a623;
+    --amber-bg: #3a2c10;
+    --red: #e74c3c;
+    --red-bg: #3a1a17;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.4;
+  }
+  #app {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 12px 12px 40px 12px;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 0 12px 0;
+  }
+  header h1 {
+    font-size: 1.2rem;
+    margin: 0;
+  }
+  button {
+    font: inherit;
+    color: var(--text);
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    min-height: 44px;
+    min-width: 44px;
+    cursor: pointer;
+  }
+  button:active { opacity: 0.8; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  #refreshBtn { background: var(--accent); border-color: var(--accent); color: #08101f; font-weight: 600; }
+
+  .banner {
+    background: var(--red-bg);
+    border: 1px solid var(--red);
+    color: var(--text);
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+  }
+  .banner a { color: var(--text); }
+  .hidden { display: none !important; }
+
+  .add-queue {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 12px;
+    padding: 4px 12px;
+  }
+  .add-queue summary {
+    padding: 12px 0;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+    font-weight: 600;
+    list-style: none;
+  }
+  .add-queue summary::-webkit-details-marker { display: none; }
+  .add-queue summary::before { content: "+ "; }
+  .add-queue[open] summary::before { content: "- "; }
+  #addQueueForm { padding-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+  #addQueueForm label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--muted); }
+  input[type="text"], input[type="password"], textarea {
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 44px;
+    width: 100%;
+  }
+  textarea { min-height: 80px; resize: vertical; }
+
+  .setup-card {
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px;
+    margin-bottom: 12px;
+  }
+  .setup-card h2 { margin-top: 0; font-size: 1.05rem; }
+  .setup-card p { color: var(--muted); font-size: 0.9rem; }
+  .setup-card .row { display: flex; gap: 8px; margin-top: 10px; }
+  .setup-card input[type="password"] { flex: 1; }
+
+  .board-section { margin-bottom: 20px; }
+  .board-section h2 {
+    font-size: 0.85rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin: 0 0 8px 2px;
+  }
+  .card-list { display: flex; flex-direction: column; gap: 10px; }
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+  .card-flag { border-color: var(--amber); background: var(--amber-bg); }
+  .card-header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+  .issue-link { color: var(--accent); text-decoration: none; font-weight: 600; min-height: 0; }
+  .issue-title { font-size: 1rem; margin: 0; flex: 1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .chip {
+    font-size: 0.75rem;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 3px 8px;
+    border-radius: 999px;
+  }
+  .warning-notice {
+    margin-top: 10px;
+    background: var(--red-bg);
+    border: 1px solid var(--red);
+    color: var(--text);
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+  }
+  .no-verdict { color: var(--muted); font-style: italic; margin: 10px 0 0 0; }
+  .verdict-badge {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+  .badge-merge { background: var(--green-bg); color: var(--green); }
+  .badge-flag { background: var(--amber-bg); color: var(--amber); }
+  .verdict-summary { margin: 10px 0 0 0; }
+  .concerns-list { margin: 8px 0 0 0; padding-left: 20px; color: var(--muted); }
+  .stats-line { margin: 10px 0 0 0; font-size: 0.8rem; color: var(--muted); }
+  .review-note { margin: 10px 0 0 0; font-size: 0.8rem; color: var(--muted); }
+  .card-status { min-height: 1.2em; font-size: 0.85rem; color: var(--accent); margin-top: 8px; }
+  .card-actions { display: flex; gap: 8px; margin-top: 10px; }
+  .card-actions button { flex: 1; }
+  .btn-approve { background: var(--green-bg); border-color: var(--green); color: var(--green); font-weight: 600; }
+  .btn-deny { background: var(--red-bg); border-color: var(--red); color: var(--red); font-weight: 600; }
+  .deny-text { margin-top: 8px; }
+
+  .empty, .loading { color: var(--muted); text-align: center; padding: 40px 0; }
+
+  footer {
+    margin-top: 24px;
+    text-align: center;
+    font-size: 0.85rem;
+    color: var(--muted);
+  }
+  footer a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <header>
+    <h1>bhh-ops approvals</h1>
+    <button id="refreshBtn" type="button">Refresh</button>
+  </header>
+
+  <div id="banner" class="banner hidden"></div>
+
+  <details id="addQueue" class="add-queue">
+    <summary>Add to queue</summary>
+    <form id="addQueueForm">
+      <label>Title
+        <input type="text" id="aqTitle" required>
+      </label>
+      <label>Notes (optional)
+        <textarea id="aqNotes"></textarea>
+      </label>
+      <button type="submit">Add issue</button>
+    </form>
+  </details>
+
+  <div id="setupCard" class="setup-card hidden">
+    <h2>Set up token</h2>
+    <p>Enter a GitHub personal access token with access to beifongshopmail-cpu/bhh-ops. It is stored only in this browser's local storage.</p>
+    <div class="row">
+      <input type="password" id="tokenInput" placeholder="github_pat_...">
+      <button id="saveTokenBtn" type="button">Save</button>
+    </div>
+  </div>
+
+  <main id="board"></main>
+
+  <footer>
+    <a href="#" id="changeTokenLink">change token</a>
+  </footer>
+
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var REPO = "beifongshopmail-cpu/bhh-ops";
+  var API_BASE = "https://api.github.com";
+  var TOKEN_KEY = "bhh_approve_token";
+
+  var boardEl = document.getElementById("board");
+  var bannerEl = document.getElementById("banner");
+  var setupCardEl = document.getElementById("setupCard");
+  var tokenInputEl = document.getElementById("tokenInput");
+  var saveTokenBtn = document.getElementById("saveTokenBtn");
+  var changeTokenLink = document.getElementById("changeTokenLink");
+  var refreshBtn = document.getElementById("refreshBtn");
+  var addQueueEl = document.getElementById("addQueue");
+  var addQueueForm = document.getElementById("addQueueForm");
+  var aqTitleEl = document.getElementById("aqTitle");
+  var aqNotesEl = document.getElementById("aqNotes");
+
+  function getToken() { return localStorage.getItem(TOKEN_KEY); }
+  function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
+
+  function escapeHtml(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+    });
+  }
+
+  function sleep(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+
+  function getLabelNames(issue) {
+    return (issue.labels || []).map(function (l) {
+      return typeof l === "string" ? l : l.name;
+    });
+  }
+
+  function apiRequest(path, options) {
+    var token = getToken();
+    var headers = {
+      "Accept": "application/vnd.github+json",
+      "Authorization": "Bearer " + token
+    };
+    if (options && options.headers) {
+      for (var k in options.headers) headers[k] = options.headers[k];
+    }
+    var fetchOpts = { method: (options && options.method) || "GET", headers: headers };
+    if (options && options.body) fetchOpts.body = options.body;
+
+    return fetch(API_BASE + path, fetchOpts).catch(function () {
+      return Promise.reject({ type: "network" });
+    }).then(function (res) {
+      if (res.status === 401 || res.status === 403) {
+        return Promise.reject({ type: "auth" });
+      }
+      if (!res.ok) {
+        return Promise.reject({ type: "network" });
+      }
+      if (res.status === 204) return null;
+      return res.json();
+    });
+  }
+
+  // ---- banner / setup card ----
+
+  function showBanner(type) {
+    if (type === "auth") {
+      bannerEl.innerHTML = 'Token expired or invalid. <a href="https://github.com/settings/personal-access-tokens" target="_blank" rel="noopener">Manage tokens</a>';
+    } else {
+      bannerEl.innerHTML = 'GitHub unreachable -- use GitHub mobile. <a href="https://github.com/beifongshopmail-cpu/bhh-ops/issues?q=is%3Aopen+label%3Aneeds-review" target="_blank" rel="noopener">Open in GitHub</a>';
+    }
+    bannerEl.classList.remove("hidden");
+  }
+
+  function hideBanner() {
+    bannerEl.classList.add("hidden");
+    bannerEl.innerHTML = "";
+  }
+
+  function handleError(err) {
+    if (err && err.type === "auth") {
+      showBanner("auth");
+      openSetup();
+    } else {
+      showBanner("network");
+    }
+  }
+
+  function openSetup() {
+    tokenInputEl.value = "";
+    setupCardEl.classList.remove("hidden");
+  }
+
+  function closeSetup() {
+    setupCardEl.classList.add("hidden");
+  }
+
+  // ---- verdict comment parsing ----
+
+  var MARKER_RE = /^<!--\s*reviewer-verdict sha:([0-9a-fA-F]+)\s*-->/;
+  var VERDICT_RE = /\*\*Verdict:\s*(MERGE|FLAG)\*\*/;
+  var CONCERNS_MARK = "**Concerns:**";
+  var STATS_RE = /Milestone commits:\s*\d+\s*\|\s*Turns:\s*\d+\s*\|\s*Notional cost:\s*\$\d+\.\d{2}/;
+
+  function parseVerdict(comments) {
+    var last = null;
+    for (var i = 0; i < comments.length; i++) {
+      var body = comments[i].body || "";
+      if (MARKER_RE.test(body.trim())) last = comments[i];
+    }
+
+    var statsLine = null;
+    for (var j = 0; j < comments.length; j++) {
+      var lines = (comments[j].body || "").split("\n");
+      for (var k = 0; k < lines.length; k++) {
+        if (STATS_RE.test(lines[k])) statsLine = lines[k].trim();
+      }
+    }
+
+    if (!last) return { verdict: null, sha: null, summary: "", concerns: [], statsLine: statsLine };
+
+    var body2 = last.body.trim();
+    var mm = body2.match(MARKER_RE);
+    var sha = mm ? mm[1] : null;
+    var vm = body2.match(VERDICT_RE);
+    var verdict = vm ? vm[1] : null;
+    var summary = "";
+    var concerns = [];
+
+    if (vm) {
+      var afterVerdictIdx = body2.indexOf(vm[0]) + vm[0].length;
+      var concernsIdx = body2.indexOf(CONCERNS_MARK);
+      if (concernsIdx > -1 && concernsIdx >= afterVerdictIdx) {
+        summary = body2.slice(afterVerdictIdx, concernsIdx).trim();
+        var afterConcerns = body2.slice(concernsIdx + CONCERNS_MARK.length);
+        var clines = afterConcerns.split("\n");
+        var started = false;
+        for (var c = 0; c < clines.length; c++) {
+          var t = clines[c].trim();
+          if (t.indexOf("- ") === 0) {
+            concerns.push(t.slice(2).trim());
+            started = true;
+          } else if (t === "") {
+            if (started) break;
+          } else {
+            break;
+          }
+        }
+      } else {
+        summary = body2.slice(afterVerdictIdx).trim();
+      }
+    }
+
+    return { verdict: verdict, sha: sha, summary: summary, concerns: concerns, statsLine: statsLine };
+  }
+
+  // ---- classification ----
+
+  function classify(issue) {
+    var labels = getLabelNames(issue);
+    function has(name) { return labels.indexOf(name) !== -1; }
+    if (has("approved") && has("rejected")) return { section: 4, warning: true };
+    if (has("rejected")) return { section: 4 };
+    if (has("approved")) return { section: 3 };
+    if (has("verdict-merge") || has("verdict-flag")) return { section: 1 };
+    if (has("needs-review")) return { section: 2 };
+    if (has("blocked") || has("manual-only")) return { section: 4 };
+    if (has("ready")) return { section: 5 };
+    return { section: 6 };
+  }
+
+  // ---- rendering ----
+
+  function renderCardBody(issue, opts) {
+    opts = opts || {};
+    var labels = getLabelNames(issue);
+    var chips = labels.map(function (l) {
+      return '<span class="chip">' + escapeHtml(l) + "</span>";
+    }).join("");
+    var url = "https://github.com/" + REPO + "/issues/" + issue.number;
+    var html = "";
+    html += '<div class="card-header">';
+    html += '<a class="issue-link" href="' + url + '" target="_blank" rel="noopener">#' + issue.number + "</a>";
+    html += '<h3 class="issue-title">' + escapeHtml(issue.title) + "</h3>";
+    html += "</div>";
+    html += '<div class="chips">' + chips + "</div>";
+    if (opts.warning) {
+      html += '<div class="warning-notice">This issue has both the approved and rejected labels. Resolve manually on GitHub.</div>';
+    }
+    return html;
+  }
+
+  function renderReadOnlyCard(issue, opts) {
+    return '<div class="card">' + renderCardBody(issue, opts) + "</div>";
+  }
+
+  function renderNeedsDecisionCard(issue, v) {
+    var num = issue.number;
+    var hasVerdict = !!(v && v.verdict);
+    var cardClasses = "card" + (hasVerdict && v.verdict === "FLAG" ? " card-flag" : "");
+    var html = '<div class="' + cardClasses + '" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+
+    if (!hasVerdict) {
+      html += '<p class="no-verdict">awaiting reviewer text</p>';
+    } else {
+      var badgeClass = v.verdict === "MERGE" ? "badge-merge" : "badge-flag";
+      var badgeText = v.verdict === "MERGE" ? "Reviewer recommends approve" : "Reviewer recommends hold";
+      var shortSha = v.sha ? v.sha.slice(0, 7) : "";
+      html += '<div class="verdict-badge ' + badgeClass + '">' + badgeText + "</div>";
+      if (v.summary) html += '<p class="verdict-summary">' + escapeHtml(v.summary) + "</p>";
+      if (v.concerns && v.concerns.length) {
+        html += '<ul class="concerns-list">' + v.concerns.map(function (c) {
+          return "<li>" + escapeHtml(c) + "</li>";
+        }).join("") + "</ul>";
+      }
+      if (v.statsLine) html += '<p class="stats-line">' + escapeHtml(v.statsLine) + "</p>";
+      html += '<p class="review-note">Reviewed @ ' + escapeHtml(shortSha) + " -- diff visible after merge.</p>";
+    }
+
+    html += '<div class="card-status"></div>';
+    var sha = hasVerdict ? (v.sha || "") : "";
+    var verdictAttr = hasVerdict ? v.verdict : "";
+    html += '<div class="card-actions">';
+    html += '<button class="btn-approve" type="button" data-action="approve" data-issue="' + num + '" data-sha="' + escapeHtml(sha) + '" data-verdict="' + escapeHtml(verdictAttr) + '"' + (hasVerdict ? "" : " disabled") + ">Approve</button>";
+    html += '<button class="btn-deny" type="button" data-action="deny" data-issue="' + num + '" data-sha="' + escapeHtml(sha) + '">Deny</button>';
+    html += "</div>";
+    html += '<input type="text" class="deny-text" data-issue="' + num + '" placeholder="Reason (optional)">';
+    html += "</div>";
+    return html;
+  }
+
+  var SECTION_DEFS = [
+    { n: 1, title: "Needs decision" },
+    { n: 2, title: "Awaiting reviewer" },
+    { n: 3, title: "Approved, awaiting 1:30am" },
+    { n: 4, title: "Blocked / manual" },
+    { n: 5, title: "Ready / queued" },
+    { n: 6, title: "Captured (not yet groomed)" }
+  ];
+
+  function renderBoard(sections, warnings, verdictData, totalCount) {
+    if (totalCount === 0) {
+      boardEl.innerHTML = '<p class="empty">Nothing in the pipeline.</p>';
+      return;
+    }
+    var html = "";
+    for (var i = 0; i < SECTION_DEFS.length; i++) {
+      var sd = SECTION_DEFS[i];
+      var items = sections[sd.n];
+      if (!items || !items.length) continue;
+      html += '<section class="board-section"><h2>' + escapeHtml(sd.title) + '</h2><div class="card-list">';
+      for (var j = 0; j < items.length; j++) {
+        var issue = items[j];
+        if (sd.n === 1) {
+          html += renderNeedsDecisionCard(issue, verdictData[issue.number]);
+        } else {
+          html += renderReadOnlyCard(issue, { warning: !!warnings[issue.number] });
+        }
+      }
+      html += "</div></section>";
+    }
+    boardEl.innerHTML = html;
+  }
+
+  // ---- board load ----
+
+  function loadBoard() {
+    hideBanner();
+    boardEl.innerHTML = '<p class="loading">Loading...</p>';
+
+    return apiRequest("/repos/" + REPO + "/issues?state=open&per_page=100")
+      .then(function (issues) {
+        issues = issues.filter(function (i) { return !("pull_request" in i); });
+
+        var sections = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+        var warnings = {};
+        for (var i = 0; i < issues.length; i++) {
+          var c = classify(issues[i]);
+          sections[c.section].push(issues[i]);
+          if (c.warning) warnings[issues[i].number] = true;
+        }
+
+        var verdictData = {};
+        var fetches = sections[1].map(function (issue) {
+          return apiRequest("/repos/" + REPO + "/issues/" + issue.number + "/comments?per_page=100")
+            .then(function (comments) {
+              verdictData[issue.number] = parseVerdict(comments);
+            });
+        });
+
+        return Promise.all(fetches).then(function () {
+          renderBoard(sections, warnings, verdictData, issues.length);
+        });
+      })
+      .catch(function (err) {
+        boardEl.innerHTML = "";
+        handleError(err);
+      });
+  }
+
+  // ---- card status helper ----
+
+  function showCardStatus(issueNumber, msg) {
+    var el = document.querySelector('.card[data-issue="' + issueNumber + '"] .card-status');
+    if (el) el.textContent = msg;
+  }
+
+  function showStatusThenReload(issueNumber, msg) {
+    showCardStatus(issueNumber, msg);
+    return sleep(1500).then(loadBoard);
+  }
+
+  // ---- approve / deny handlers ----
+
+  function onApprove(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    var verdict = btn.dataset.verdict;
+    var sha = btn.dataset.sha || "";
+
+    if (verdict === "FLAG" && btn.dataset.confirming !== "1") {
+      var original = btn.textContent;
+      btn.dataset.confirming = "1";
+      btn.dataset.originalText = original;
+      btn.textContent = "Confirm approve despite FLAG?";
+      if (btn._confirmTimeout) clearTimeout(btn._confirmTimeout);
+      btn._confirmTimeout = setTimeout(function () {
+        btn.dataset.confirming = "0";
+        btn.textContent = btn.dataset.originalText || "Approve";
+      }, 5000);
+      return;
+    }
+
+    if (btn._confirmTimeout) clearTimeout(btn._confirmTimeout);
+    btn.disabled = true;
+
+    apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+      .then(function (fresh) {
+        var freshLabels = getLabelNames(fresh);
+        if (freshLabels.indexOf("approved") !== -1) {
+          return showStatusThenReload(issueNumber, "already approved");
+        }
+        return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/comments?per_page=100")
+          .then(function (comments) {
+            var freshVerdict = parseVerdict(comments);
+            var freshSha = freshVerdict.sha || "";
+            if (freshSha !== sha) {
+              return showStatusThenReload(issueNumber, "verdict changed -- re-check");
+            }
+            return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ labels: ["approved"] })
+            }).then(loadBoard);
+          });
+      })
+      .catch(function (err) {
+        handleError(err);
+        btn.disabled = false;
+      });
+  }
+
+  function onDeny(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    var sha = btn.dataset.sha || "";
+    btn.disabled = true;
+
+    apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+      .then(function (fresh) {
+        var freshLabels = getLabelNames(fresh);
+        if (freshLabels.indexOf("rejected") !== -1) {
+          return showStatusThenReload(issueNumber, "already rejected");
+        }
+        return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/comments?per_page=100")
+          .then(function (comments) {
+            var freshVerdict = parseVerdict(comments);
+            var freshSha = freshVerdict.sha || "";
+            if (freshSha !== sha) {
+              return showStatusThenReload(issueNumber, "verdict changed -- re-check");
+            }
+            return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ labels: ["rejected"] })
+            }).then(function () {
+              var textInput = document.querySelector('.deny-text[data-issue="' + issueNumber + '"]');
+              var text = textInput ? textInput.value.trim() : "";
+              if (text) {
+                return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/comments", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ body: "Rejected via approval page: " + text })
+                });
+              }
+            }).then(loadBoard);
+          });
+      })
+      .catch(function (err) {
+        handleError(err);
+        btn.disabled = false;
+      });
+  }
+
+  boardEl.addEventListener("click", function (e) {
+    var btn = e.target.closest("button[data-action]");
+    if (!btn) return;
+    if (btn.dataset.action === "approve") onApprove(btn);
+    else if (btn.dataset.action === "deny") onDeny(btn);
+  });
+
+  // ---- setup card ----
+
+  saveTokenBtn.addEventListener("click", function () {
+    var val = tokenInputEl.value.trim();
+    if (!val) return;
+    setToken(val);
+    closeSetup();
+    loadBoard();
+  });
+
+  changeTokenLink.addEventListener("click", function (e) {
+    e.preventDefault();
+    openSetup();
+  });
+
+  // ---- header / add to queue ----
+
+  refreshBtn.addEventListener("click", function () { loadBoard(); });
+
+  addQueueForm.addEventListener("submit", function (e) {
+    e.preventDefault();
+    var title = aqTitleEl.value.trim();
+    if (!title) return;
+    var notes = aqNotesEl.value;
+    var submitBtn = addQueueForm.querySelector('button[type="submit"]');
+    submitBtn.disabled = true;
+
+    apiRequest("/repos/" + REPO + "/issues", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title: title, body: notes || "" })
+    }).then(function () {
+      aqTitleEl.value = "";
+      aqNotesEl.value = "";
+      addQueueEl.open = false;
+      return loadBoard();
+    }).catch(function (err) {
+      handleError(err);
+    }).then(function () {
+      submitBtn.disabled = false;
+    });
+  });
+
+  // ---- init ----
+
+  function init() {
+    var token = getToken();
+    if (!token) {
+      openSetup();
+    } else {
+      loadBoard();
+    }
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
