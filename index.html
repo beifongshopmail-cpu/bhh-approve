@@ -165,6 +165,35 @@
   }
   .badge-merge { background: var(--green-bg); color: var(--green); }
   .badge-flag { background: var(--amber-bg); color: var(--amber); }
+  .badge-legacy {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--bg);
+    color: var(--muted);
+    border: 1px solid var(--border);
+  }
+  .tier-line { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
+  .tier-badge { padding: 2px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; }
+  .tier-green { background: var(--green-bg); color: var(--green); }
+  .tier-red { background: var(--red-bg); color: var(--red); }
+  .tier-reasons { font-size: 0.75rem; color: var(--muted); }
+  .fact-line { margin: 6px 0 0 0; font-size: 0.85rem; color: var(--text); }
+  .diff-details { margin-top: 8px; }
+  .diff-details summary { cursor: pointer; color: var(--accent); font-size: 0.85rem; }
+  .diff-pre {
+    margin: 6px 0 0 0;
+    padding: 8px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow-x: auto;
+    font-size: 0.8rem;
+    white-space: pre;
+  }
   .verdict-summary { margin: 10px 0 0 0; }
   .concerns-list { margin: 8px 0 0 0; padding-left: 20px; color: var(--muted); }
   .stats-line { margin: 10px 0 0 0; font-size: 0.8rem; color: var(--muted); }
@@ -330,6 +359,58 @@
   var VERDICT_RE = /\*\*Verdict:\s*(MERGE|FLAG)\*\*/;
   var CONCERNS_MARK = "**Concerns:**";
   var STATS_RE = /Milestone commits:\s*\d+\s*\|\s*Turns:\s*\d+\s*\|\s*Notional cost:\s*\$\d+\.\d{2}/;
+  var FACTS_LINE_RE = /^([a-zA-Z]+):\s*(.*)$/;
+  var TIER_RE = /^(GREEN|RED)\s*(\(([\s\S]*)\))?\s*$/i;
+  var DIFF_HEADER_RE = /^DIFF @ ([0-9a-fA-F]+)\s*$/;
+
+  function parseFacts(body) {
+    var lines = body.split("\n");
+    var idx = -1;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === "FACTS") { idx = i; break; }
+    }
+    if (idx === -1) return null;
+    var facts = {};
+    for (var j = idx + 1; j < lines.length; j++) {
+      var line = lines[j];
+      if (line.trim() === "") break;
+      var m = line.match(FACTS_LINE_RE);
+      if (!m) break;
+      facts[m[1].toLowerCase()] = m[2].trim();
+    }
+    return facts;
+  }
+
+  function parseTier(value) {
+    if (!value) return null;
+    var m = value.match(TIER_RE);
+    if (!m) return null;
+    return { color: m[1].toUpperCase(), reasons: m[3] || "" };
+  }
+
+  function findDiffComment(comments, sha) {
+    if (!sha) return null;
+    var found = null;
+    for (var i = 0; i < comments.length; i++) {
+      var body = comments[i].body || "";
+      var firstLine = body.split("\n")[0].trim();
+      var m = firstLine.match(DIFF_HEADER_RE);
+      if (m && m[1].toLowerCase() === sha.toLowerCase()) found = body;
+    }
+    if (found == null) return null;
+    var lines = found.split("\n");
+    lines.shift();
+    var rest = lines.join("\n").trim();
+    var fenceMatch = rest.match(/^```[a-zA-Z]*\n([\s\S]*?)\n?```$/);
+    return fenceMatch ? fenceMatch[1] : rest;
+  }
+
+  function splitFirstSentence(text) {
+    var t = text || "";
+    var m = t.match(/^([\s\S]*?[.!?])(\s+|$)/);
+    if (m) return { first: m[1], rest: t.slice(m[0].length) };
+    return { first: t, rest: "" };
+  }
 
   function parseVerdict(comments) {
     var last = null;
@@ -346,7 +427,7 @@
       }
     }
 
-    if (!last) return { verdict: null, sha: null, summary: "", concerns: [], statsLine: statsLine };
+    if (!last) return { verdict: null, sha: null, summary: "", concerns: [], statsLine: statsLine, facts: null, tier: null, diffComment: null, confirmRequired: false };
 
     var body2 = last.body.trim();
     var mm = body2.match(MARKER_RE);
@@ -380,7 +461,23 @@
       }
     }
 
-    return { verdict: verdict, sha: sha, summary: summary, concerns: concerns, statsLine: statsLine };
+    var facts = parseFacts(body2);
+    var tier = facts ? parseTier(facts.tier) : null;
+    var hasFacts = !!(facts && tier);
+    var diffComment = hasFacts ? findDiffComment(comments, sha) : null;
+    var confirmRequired = hasFacts ? (tier.color === "RED") : true;
+
+    return {
+      verdict: verdict,
+      sha: sha,
+      summary: summary,
+      concerns: concerns,
+      statsLine: statsLine,
+      facts: hasFacts ? facts : null,
+      tier: hasFacts ? tier : null,
+      diffComment: diffComment,
+      confirmRequired: confirmRequired
+    };
   }
 
   // ---- classification ----
@@ -437,21 +534,46 @@
       var badgeText = v.verdict === "MERGE" ? "Reviewer recommends approve" : "Reviewer recommends hold";
       var shortSha = v.sha ? v.sha.slice(0, 7) : "";
       html += '<div class="verdict-badge ' + badgeClass + '">' + badgeText + "</div>";
-      if (v.summary) html += '<p class="verdict-summary">' + escapeHtml(v.summary) + "</p>";
+
+      if (v.tier) {
+        var sentence = splitFirstSentence(v.summary);
+        html += '<p class="verdict-summary"><strong>' + escapeHtml(sentence.first) + "</strong>";
+        if (sentence.rest) html += " " + escapeHtml(sentence.rest);
+        html += "</p>";
+        var tierClass = v.tier.color === "GREEN" ? "tier-green" : "tier-red";
+        html += '<div class="tier-line"><span class="tier-badge ' + tierClass + '">' + v.tier.color + "</span>";
+        if (v.tier.reasons) html += '<span class="tier-reasons">' + escapeHtml(v.tier.reasons) + "</span>";
+        html += "</div>";
+      } else {
+        if (v.summary) html += '<p class="verdict-summary">' + escapeHtml(v.summary) + "</p>";
+        html += '<span class="badge-legacy">LEGACY - open issue</span>';
+      }
+
       if (v.concerns && v.concerns.length) {
         html += '<ul class="concerns-list">' + v.concerns.map(function (c) {
           return "<li>" + escapeHtml(c) + "</li>";
         }).join("") + "</ul>";
       }
       if (v.statsLine) html += '<p class="stats-line">' + escapeHtml(v.statsLine) + "</p>";
-      html += '<p class="review-note">Reviewed @ ' + escapeHtml(shortSha) + " -- diff visible after merge.</p>";
+
+      if (v.facts) {
+        if (v.facts.test) html += '<p class="fact-line">Test: ' + escapeHtml(v.facts.test) + "</p>";
+        if (v.facts.fence) html += '<p class="fact-line">Fence: ' + escapeHtml(v.facts.fence) + "</p>";
+      }
+
+      if (v.diffComment) {
+        html += '<details class="diff-details"><summary>View diff</summary><pre class="diff-pre">' + escapeHtml(v.diffComment) + "</pre></details>";
+        html += '<p class="review-note">Reviewed @ ' + escapeHtml(shortSha) + "</p>";
+      } else {
+        html += '<p class="review-note">Reviewed @ ' + escapeHtml(shortSha) + " -- diff visible after merge.</p>";
+      }
     }
 
     html += '<div class="card-status"></div>';
     var sha = hasVerdict ? (v.sha || "") : "";
-    var verdictAttr = hasVerdict ? v.verdict : "";
+    var confirmAttr = hasVerdict && v.confirmRequired ? "1" : "0";
     html += '<div class="card-actions">';
-    html += '<button class="btn-approve" type="button" data-action="approve" data-issue="' + num + '" data-sha="' + escapeHtml(sha) + '" data-verdict="' + escapeHtml(verdictAttr) + '"' + (hasVerdict ? "" : " disabled") + ">Approve</button>";
+    html += '<button class="btn-approve" type="button" data-action="approve" data-issue="' + num + '" data-sha="' + escapeHtml(sha) + '" data-confirm="' + confirmAttr + '"' + (hasVerdict ? "" : " disabled") + ">Approve</button>";
     html += '<button class="btn-deny" type="button" data-action="deny" data-issue="' + num + '" data-sha="' + escapeHtml(sha) + '">Deny</button>';
     html += "</div>";
     html += '<input type="text" class="deny-text" data-issue="' + num + '" placeholder="Reason (optional)">';
@@ -544,14 +666,14 @@
 
   function onApprove(btn) {
     var issueNumber = Number(btn.dataset.issue);
-    var verdict = btn.dataset.verdict;
     var sha = btn.dataset.sha || "";
+    var confirmRequired = btn.dataset.confirm === "1";
 
-    if (verdict === "FLAG" && btn.dataset.confirming !== "1") {
+    if (confirmRequired && btn.dataset.confirming !== "1") {
       var original = btn.textContent;
       btn.dataset.confirming = "1";
       btn.dataset.originalText = original;
-      btn.textContent = "Confirm approve despite FLAG?";
+      btn.textContent = "Confirm approve anyway?";
       if (btn._confirmTimeout) clearTimeout(btn._confirmTimeout);
       btn._confirmTimeout = setTimeout(function () {
         btn.dataset.confirming = "0";
