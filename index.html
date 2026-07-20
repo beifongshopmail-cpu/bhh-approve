@@ -133,6 +133,9 @@
     background: var(--green-bg);
     color: var(--green);
   }
+  .btn-promote { background: var(--green-bg); color: var(--green); }
+  .files-list { margin: 6px 0 0 18px; padding: 0; font-size: 0.85rem; color: var(--muted); }
+  .files-list li { margin: 2px 0; }
 
   .setup-card {
     background: var(--bg-alt);
@@ -550,18 +553,71 @@
     };
   }
 
+  // ---- issue-body section parsing (JS port of Get-Section / Get-SectionLines) ----
+
+  function getSection(body, header) {
+    var lines = String(body || "").split(/\r?\n/);
+    var want = ("## " + header).toLowerCase();
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim().toLowerCase() === want) {
+        for (var j = i + 1; j < lines.length; j++) {
+          var t = lines[j].trim();
+          if (t === "") continue;
+          if (t.indexOf("## ") === 0) break;
+          return t;
+        }
+      }
+    }
+    return null;
+  }
+
+  function getSectionLines(body, header) {
+    var lines = String(body || "").split(/\r?\n/);
+    var want = ("## " + header).toLowerCase();
+    var out = [];
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim().toLowerCase() === want) {
+        for (var j = i + 1; j < lines.length; j++) {
+          var t = lines[j].trim();
+          if (t.indexOf("## ") === 0) break;
+          if (t !== "") out.push(t);
+        }
+        break;
+      }
+    }
+    return out;
+  }
+
+  function parseGroom(issue) {
+    var body = issue.body || "";
+    var cwd = getSection(body, "Repo / cwd");
+    return {
+      cwd: cwd,
+      branch: getSection(body, "Branch"),
+      test: getSection(body, "Test") || "NONE",
+      files: getSectionLines(body, "Files"),
+      promotable: !!cwd
+    };
+  }
+
   // ---- classification ----
 
   function classify(issue) {
     var labels = getLabelNames(issue);
     function has(name) { return labels.indexOf(name) !== -1; }
-    if (has("approved") && has("rejected")) return { section: 4, warning: true };
+    if (has("approved") && has("rejected")) {
+      return { section: 4, warning: "This issue has both the approved and rejected labels. Resolve manually on GitHub." };
+    }
+    if (has("proposed") && has("ready")) {
+      return { section: 4, warning: "Half-promoted: carries both proposed and ready. The runner skips these. Remove proposed on GitHub." };
+    }
     if (has("rejected")) return { section: 4 };
     if (has("approved")) return { section: 3 };
     if (has("verdict-merge") || has("verdict-flag")) return { section: 1 };
     if (has("needs-review")) return { section: 2 };
     if (has("blocked") || has("manual-only")) return { section: 4 };
     if (has("ready")) return { section: 5 };
+    if (has("proposed")) return { section: 7 };
     return { section: 6 };
   }
 
@@ -581,7 +637,7 @@
     html += "</div>";
     html += '<div class="chips">' + chips + "</div>";
     if (opts.warning) {
-      html += '<div class="warning-notice">This issue has both the approved and rejected labels. Resolve manually on GitHub.</div>';
+      html += '<div class="warning-notice">' + escapeHtml(opts.warning) + "</div>";
     }
     return html;
   }
@@ -599,6 +655,33 @@
     html += '<div class="card-status"></div>';
     html += '<div class="card-actions">';
     html += '<button class="btn-run-next" type="button" data-action="run-next-toggle" data-issue="' + num + '" data-active="' + (hasRunNext ? "1" : "0") + '">' + (hasRunNext ? "Remove run next" : "Run next") + "</button>";
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
+  function renderProposedCard(issue) {
+    var num = issue.number;
+    var g = parseGroom(issue);
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
+    if (g.branch) html += '<p class="fact-line">Branch: ' + escapeHtml(g.branch) + "</p>";
+    html += '<p class="fact-line">Test: ' + escapeHtml(g.test) + "</p>";
+    if (g.files.length) {
+      html += '<ul class="files-list">' + g.files.map(function (f) {
+        return "<li>" + escapeHtml(f) + "</li>";
+      }).join("") + "</ul>";
+    } else {
+      html += '<p class="fact-line">Files: none listed</p>';
+    }
+    html += '<details class="diff-details"><summary>View full body</summary><pre class="diff-pre">' + escapeHtml(issue.body || "(empty)") + "</pre></details>";
+    if (!g.promotable) {
+      html += '<div class="warning-notice">No "## Repo / cwd" section -- the runner would block this. Fix the body on GitHub before promoting.</div>';
+    }
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-promote" type="button" data-action="promote" data-issue="' + num + '"' + (g.promotable ? "" : " disabled") + ">Promote to ready</button>";
     html += "</div>";
     html += "</div>";
     return html;
@@ -670,6 +753,7 @@
     { n: 2, title: "Awaiting reviewer" },
     { n: 3, title: "Approved, awaiting 1:30am" },
     { n: 4, title: "Blocked / manual" },
+    { n: 7, title: "Groomed, awaiting promotion" },
     { n: 5, title: "Ready / queued" },
     { n: 6, title: "Captured (not yet groomed)" }
   ];
@@ -691,8 +775,10 @@
           html += renderNeedsDecisionCard(issue, verdictData[issue.number]);
         } else if (sd.n === 5) {
           html += renderReadyCard(issue);
+        } else if (sd.n === 7) {
+          html += renderProposedCard(issue);
         } else {
-          html += renderReadOnlyCard(issue, { warning: !!warnings[issue.number] });
+          html += renderReadOnlyCard(issue, { warning: warnings[issue.number] });
         }
       }
       html += "</div></section>";
@@ -710,12 +796,12 @@
       .then(function (issues) {
         issues = issues.filter(function (i) { return !("pull_request" in i); });
 
-        var sections = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [] };
+        var sections = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
         var warnings = {};
         for (var i = 0; i < issues.length; i++) {
           var c = classify(issues[i]);
           sections[c.section].push(issues[i]);
-          if (c.warning) warnings[issues[i].number] = true;
+          if (c.warning) warnings[issues[i].number] = c.warning;
         }
 
         var verdictData = {};
@@ -855,12 +941,48 @@
     });
   }
 
+  function onPromote(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    armConfirm(btn, "Confirm promote?", "Promote to ready", function () {
+      btn.disabled = true;
+      apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+        .then(function (fresh) {
+          var freshLabels = getLabelNames(fresh);
+          if (freshLabels.indexOf("ready") !== -1) {
+            return showStatusThenReload(issueNumber, "already promoted");
+          }
+          if (freshLabels.indexOf("proposed") === -1) {
+            return showStatusThenReload(issueNumber, "no longer proposed -- re-check");
+          }
+          showCardStatus(issueNumber, "promoting...");
+          return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ labels: ["ready"] })
+          }).then(function () {
+            return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels/proposed", {
+              method: "DELETE"
+            }).catch(function (err) {
+              showCardStatus(issueNumber, "HALF-PROMOTED: ready added, proposed NOT removed -- remove it on GitHub");
+              btn.disabled = false;
+              throw err;
+            });
+          }).then(loadBoard);
+        })
+        .catch(function (err) {
+          handleError(err);
+          btn.disabled = false;
+        });
+    });
+  }
+
   boardEl.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
     if (!btn) return;
     if (btn.dataset.action === "approve") onApprove(btn);
     else if (btn.dataset.action === "deny") onDeny(btn);
     else if (btn.dataset.action === "run-next-toggle") onRunNextToggle(btn);
+    else if (btn.dataset.action === "promote") onPromote(btn);
   });
 
   // ---- setup card ----
