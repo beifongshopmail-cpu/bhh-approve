@@ -104,6 +104,35 @@
     width: 100%;
   }
   textarea { min-height: 80px; resize: vertical; }
+  input[type="number"] {
+    font: inherit;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    min-height: 44px;
+    width: 100%;
+  }
+
+  #runControlsForm { padding-bottom: 4px; display: flex; flex-direction: column; gap: 10px; }
+  #runControlsForm label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--muted); }
+  #runControlsBody { padding-bottom: 12px; }
+  .run-controls-feed { margin-top: 14px; }
+  .run-controls-feed-head { display: flex; align-items: center; justify-content: space-between; }
+  .run-controls-feed-head h3 { margin: 0; font-size: 0.8rem; letter-spacing: 0.04em; color: var(--muted); text-transform: uppercase; }
+  #rcFeed { margin-top: 8px; }
+  .btn-run-next { background: var(--bg); }
+  .badge-run-next {
+    display: inline-block;
+    margin-top: 10px;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    background: var(--green-bg);
+    color: var(--green);
+  }
 
   .setup-card {
     background: var(--bg-alt);
@@ -239,6 +268,34 @@
     </form>
   </details>
 
+  <details id="runControls" class="add-queue">
+    <summary>Run controls</summary>
+    <div id="runControlsBody">
+      <p id="rcNoControl" class="no-verdict hidden">No control issue found</p>
+      <form id="runControlsForm">
+        <label>Hours
+          <input type="number" id="rcHours" min="1" max="8" value="4">
+        </label>
+        <label>Rate
+          <input type="number" id="rcRate" min="1" max="6" value="2">
+        </label>
+        <div class="card-actions">
+          <button id="rcRunBtn" type="button" disabled>Run now</button>
+          <button id="rcPaceBtn" type="button" disabled>Set tonight's pace</button>
+          <button id="rcSkipBtn" type="button" disabled>Skip tonight</button>
+        </div>
+      </form>
+      <div id="rcStatus" class="card-status"></div>
+      <div class="run-controls-feed">
+        <div class="run-controls-feed-head">
+          <h3>Status feed</h3>
+          <button id="rcRefreshBtn" type="button" disabled>Refresh</button>
+        </div>
+        <div id="rcFeed"></div>
+      </div>
+    </div>
+  </details>
+
   <div id="setupCard" class="setup-card hidden">
     <h2>Set up token</h2>
     <p>Enter a GitHub personal access token with access to beifongshopmail-cpu/bhh-ops. It is stored only in this browser's local storage.</p>
@@ -275,6 +332,19 @@
   var addQueueForm = document.getElementById("addQueueForm");
   var aqTitleEl = document.getElementById("aqTitle");
   var aqNotesEl = document.getElementById("aqNotes");
+
+  var runControlsEl = document.getElementById("runControls");
+  var rcNoControlEl = document.getElementById("rcNoControl");
+  var rcHoursEl = document.getElementById("rcHours");
+  var rcRateEl = document.getElementById("rcRate");
+  var rcRunBtn = document.getElementById("rcRunBtn");
+  var rcPaceBtn = document.getElementById("rcPaceBtn");
+  var rcSkipBtn = document.getElementById("rcSkipBtn");
+  var rcStatusEl = document.getElementById("rcStatus");
+  var rcRefreshBtn = document.getElementById("rcRefreshBtn");
+  var rcFeedEl = document.getElementById("rcFeed");
+  var controlIssueNumber = null;
+  var controlIssueLoaded = false;
 
   function getToken() { return localStorage.getItem(TOKEN_KEY); }
   function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
@@ -520,6 +590,20 @@
     return '<div class="card">' + renderCardBody(issue, opts) + "</div>";
   }
 
+  function renderReadyCard(issue) {
+    var num = issue.number;
+    var hasRunNext = getLabelNames(issue).indexOf("run-next") !== -1;
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    if (hasRunNext) html += '<span class="badge-run-next">Run next</span>';
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-run-next" type="button" data-action="run-next-toggle" data-issue="' + num + '" data-active="' + (hasRunNext ? "1" : "0") + '">' + (hasRunNext ? "Remove run next" : "Run next") + "</button>";
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
   function renderNeedsDecisionCard(issue, v) {
     var num = issue.number;
     var hasVerdict = !!(v && v.verdict);
@@ -605,6 +689,8 @@
         var issue = items[j];
         if (sd.n === 1) {
           html += renderNeedsDecisionCard(issue, verdictData[issue.number]);
+        } else if (sd.n === 5) {
+          html += renderReadyCard(issue);
         } else {
           html += renderReadOnlyCard(issue, { warning: !!warnings[issue.number] });
         }
@@ -752,11 +838,29 @@
       });
   }
 
+  function onRunNextToggle(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    var active = btn.dataset.active === "1";
+    btn.disabled = true;
+    var req = active
+      ? apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels/run-next", { method: "DELETE" })
+      : apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ labels: ["run-next"] })
+        });
+    req.then(loadBoard).catch(function (err) {
+      handleError(err);
+      btn.disabled = false;
+    });
+  }
+
   boardEl.addEventListener("click", function (e) {
     var btn = e.target.closest("button[data-action]");
     if (!btn) return;
     if (btn.dataset.action === "approve") onApprove(btn);
     else if (btn.dataset.action === "deny") onDeny(btn);
+    else if (btn.dataset.action === "run-next-toggle") onRunNextToggle(btn);
   });
 
   // ---- setup card ----
@@ -800,6 +904,147 @@
     }).then(function () {
       submitBtn.disabled = false;
     });
+  });
+
+  // ---- run controls ----
+
+  function relativeTime(iso) {
+    var then = new Date(iso).getTime();
+    var diffSec = Math.floor((Date.now() - then) / 1000);
+    if (diffSec < 60) return diffSec + "s ago";
+    var m = Math.floor(diffSec / 60);
+    if (m < 60) return m + "m ago";
+    var h = Math.floor(m / 60);
+    if (h < 24) return h + "h ago";
+    var d = Math.floor(h / 24);
+    return d + "d ago";
+  }
+
+  function getHoursRate() {
+    var hours = parseInt(rcHoursEl.value, 10);
+    var rate = parseInt(rcRateEl.value, 10);
+    if (!(hours >= 1 && hours <= 8 && rate >= 1 && rate <= 6)) return null;
+    return { hours: hours, rate: rate };
+  }
+
+  function setControlButtonsEnabled(enabled) {
+    rcRunBtn.disabled = !enabled;
+    rcPaceBtn.disabled = !enabled;
+    rcSkipBtn.disabled = !enabled;
+    rcRefreshBtn.disabled = !enabled;
+  }
+
+  function loadFeed() {
+    if (!controlIssueNumber) {
+      rcFeedEl.innerHTML = "";
+      return Promise.resolve();
+    }
+    rcFeedEl.innerHTML = '<p class="loading">Loading...</p>';
+    return apiRequest("/repos/" + REPO + "/issues/" + controlIssueNumber + "/comments?per_page=100")
+      .then(function (comments) {
+        var last5 = comments.slice(-5).reverse();
+        if (!last5.length) {
+          rcFeedEl.innerHTML = '<p class="no-verdict">No comments yet</p>';
+          return;
+        }
+        rcFeedEl.innerHTML = last5.map(function (c) {
+          var firstLine = (c.body || "").split("\n")[0];
+          return '<p class="fact-line">' + escapeHtml(firstLine) + ' <span class="tier-reasons">(' + escapeHtml(relativeTime(c.created_at)) + ")</span></p>";
+        }).join("");
+      })
+      .catch(function (err) {
+        rcFeedEl.innerHTML = "";
+        handleError(err);
+      });
+  }
+
+  function loadControlIssue() {
+    setControlButtonsEnabled(false);
+    rcNoControlEl.classList.add("hidden");
+    return apiRequest("/repos/" + REPO + "/issues?state=open&labels=control&per_page=100")
+      .then(function (issues) {
+        issues = issues.filter(function (i) { return !("pull_request" in i); });
+        if (!issues.length) {
+          controlIssueNumber = null;
+          rcNoControlEl.classList.remove("hidden");
+          rcFeedEl.innerHTML = "";
+          return;
+        }
+        controlIssueNumber = issues[0].number;
+        setControlButtonsEnabled(true);
+        return loadFeed();
+      })
+      .catch(function (err) {
+        controlIssueNumber = null;
+        handleError(err);
+      });
+  }
+
+  function postControlComment(text) {
+    setControlButtonsEnabled(false);
+    rcStatusEl.textContent = "";
+    apiRequest("/repos/" + REPO + "/issues/" + controlIssueNumber + "/comments", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ body: text })
+    }).then(function () {
+      rcStatusEl.textContent = "Posted: " + text;
+      setControlButtonsEnabled(true);
+      loadFeed();
+    }).catch(function (err) {
+      handleError(err);
+      setControlButtonsEnabled(true);
+    });
+  }
+
+  function armConfirm(btn, confirmText, defaultText, onConfirmed) {
+    if (btn.dataset.confirming !== "1") {
+      btn.dataset.confirming = "1";
+      btn.dataset.originalText = btn.textContent;
+      btn.textContent = confirmText;
+      if (btn._confirmTimeout) clearTimeout(btn._confirmTimeout);
+      btn._confirmTimeout = setTimeout(function () {
+        btn.dataset.confirming = "0";
+        btn.textContent = btn.dataset.originalText || defaultText;
+      }, 5000);
+      return;
+    }
+    if (btn._confirmTimeout) clearTimeout(btn._confirmTimeout);
+    btn.dataset.confirming = "0";
+    btn.textContent = btn.dataset.originalText || defaultText;
+    onConfirmed();
+  }
+
+  rcRunBtn.addEventListener("click", function () {
+    if (!controlIssueNumber) return;
+    var hr = getHoursRate();
+    if (!hr) { rcStatusEl.textContent = "Invalid hours/rate"; return; }
+    armConfirm(rcRunBtn, "Confirm run now?", "Run now", function () {
+      postControlComment("RUN hours=" + hr.hours + " rate=" + hr.rate);
+    });
+  });
+
+  rcPaceBtn.addEventListener("click", function () {
+    if (!controlIssueNumber) return;
+    var hr = getHoursRate();
+    if (!hr) { rcStatusEl.textContent = "Invalid hours/rate"; return; }
+    postControlComment("PACE hours=" + hr.hours + " rate=" + hr.rate);
+  });
+
+  rcSkipBtn.addEventListener("click", function () {
+    if (!controlIssueNumber) return;
+    armConfirm(rcSkipBtn, "Confirm skip?", "Skip tonight", function () {
+      postControlComment("SKIP");
+    });
+  });
+
+  rcRefreshBtn.addEventListener("click", function () { loadFeed(); });
+
+  runControlsEl.addEventListener("toggle", function () {
+    if (runControlsEl.open && !controlIssueLoaded) {
+      controlIssueLoaded = true;
+      loadControlIssue();
+    }
   });
 
   // ---- init ----
