@@ -243,6 +243,15 @@
     margin-right: var(--s-2);
     vertical-align: middle;
   }
+  .count-pill {
+    display: inline-block; margin-left: var(--s-2);
+    min-width: 20px; padding: 1px 7px;
+    border-radius: var(--r-pill);
+    background: var(--surface-2); border: 1px solid var(--line);
+    color: var(--text-dim);
+    font-size: 11px; font-weight: 700; letter-spacing: 0;
+    text-transform: none; text-align: center;
+  }
   .card-list { display: flex; flex-direction: column; gap: var(--s-3); }
   .card {
     background: var(--surface);
@@ -888,7 +897,7 @@
       var sd = SECTION_DEFS[i];
       var items = sections[sd.n];
       if (!items || !items.length) continue;
-      html += '<section class="board-section"><h2>' + escapeHtml(sd.title) + '</h2><div class="card-list">';
+      html += '<section class="board-section"><h2>' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2><div class="card-list">';
       for (var j = 0; j < items.length; j++) {
         var issue = items[j];
         if (sd.n === 1) {
