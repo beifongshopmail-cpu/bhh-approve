@@ -686,7 +686,8 @@
   var rcFeedEl = document.getElementById("rcFeed");
   var controlIssueNumber = null;
   var controlIssueLoaded = false;
-  var openSections = new Set([1]);
+  var openSections = new Set();
+  var decisionAutoOpened = false;
   var openDiffs = new Set();
   var reloadTimer = null;
 
@@ -1312,6 +1313,11 @@
           var c = classify(issues[i]);
           sections[c.section].push(issues[i]);
           if (c.warning) warnings[issues[i].number] = c.warning;
+        }
+
+        if (!decisionAutoOpened) {
+          if (sections[1].length) openSections.add(1);
+          decisionAutoOpened = true;
         }
 
         var verdictData = {};
