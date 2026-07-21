@@ -92,6 +92,7 @@
     margin-bottom: 16px;
     padding: 0;
   }
+  .wordmark-col { display: flex; flex-direction: column; align-items: center; }
   .wordmark { display: inline-flex; align-items: center; gap: 9px; }
   .wordmark .mark {
     width: 38px; height: 38px; border-radius: 9px;
@@ -103,6 +104,11 @@
     font-family: var(--mono); font-size: 13px; letter-spacing: 0.16em;
     text-transform: uppercase; color: var(--text-dim);
   }
+  .synced {
+    font-family: var(--mono); font-size: 11px; color: var(--text-dim);
+    letter-spacing: 1px; margin-top: 8px;
+  }
+  .synced.flash { color: var(--accent); }
   #refreshBtn {
     position: absolute; right: 0; top: 50%; transform: translateY(-50%);
     width: 44px; height: 44px; padding: 0; min-width: 44px;
@@ -110,6 +116,9 @@
     background: var(--surface-2); border: 1px solid var(--line);
     color: var(--text-dim); font-size: 18px;
   }
+  .refresh.busy .glyph { display: inline-block; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .refresh.ok { border-color: var(--accent); color: var(--accent); }
   button {
     font: inherit;
     color: var(--text);
@@ -324,6 +333,11 @@
   .board-section:not(.collapsed) .count-pill,
   .panel-tile[open] > summary .count-pill { order: 3; }
 
+  .board-section.empty { background: transparent; box-shadow: inset 0 0 0 1px var(--sec); }
+  .board-section.empty h2 { background: transparent; color: var(--sec); }
+  .board-section.empty .count-pill { background: rgba(255,255,255,.06); }
+  .empty-line { font-family: var(--mono); font-size: 12px; color: var(--text-dim); padding: 2px 4px 8px; }
+
   .collapsed .sec-body { display: none; }
   .sec-body, .panel-body { animation: reveal var(--dur) var(--ease) both; }
   @keyframes reveal {
@@ -332,45 +346,44 @@
   }
   @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; animation: none !important; }
+    .refresh.busy .glyph { animation: none !important; }
   }
 
   .queue-body { padding: 10px 12px 14px; }
   .queue-body label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-dim); }
   .queue-body textarea { min-height: 76px; }
 
-  .panel-full {
-    background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.07);
+  .panel-full { margin-top: 10px; }
+  .panel-full > summary { font-weight: 800; }
+
+  .term-panel {
+    background: #050505;
+    border: 1px solid #171717;
     border-radius: 8px;
     overflow: hidden;
-    margin-top: 10px;
+    margin-bottom: 12px;
   }
-  .panel-full > summary {
+  .term-panel > summary,
+  .term-panel > h2 {
     margin: 0;
-    padding: 12px 14px;
-    min-height: 52px;
+    height: 52px;
+    padding: 0 12px;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     cursor: pointer;
-    list-style: none;
-    font-size: 15px;
-    font-weight: 800;
-  }
-  .panel-full > summary::-webkit-details-marker { display: none; }
-
-  .terminal { border-color: rgba(212,240,74,0.30); }
-  .terminal > summary {
-    background: #050505;
-    color: var(--accent);
     font-family: var(--mono);
     font-size: 13px;
-    letter-spacing: 0.14em;
+    letter-spacing: 2px;
     text-transform: uppercase;
-    font-weight: 700;
+    list-style: none;
   }
-  .terminal > summary .caret { opacity: 0.7; }
-  .terminal #runControlsBody { padding: 12px 14px 14px; background: #050505; }
+  .term-panel > summary::-webkit-details-marker { display: none; }
+  .term-panel .panel-body { padding: 0 12px 14px; font-family: var(--mono); font-size: 13px; }
+
+  .terminal > summary { color: var(--accent); }
+  .terminal .caret { color: var(--accent); }
+  .terminal #runControlsBody { padding: 0 12px 14px; }
   .terminal #runControlsForm label {
     font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
     text-transform: uppercase; color: var(--text-dim);
@@ -401,45 +414,12 @@
   }
   .card-flag { border-color: var(--warn); background: var(--amber-bg); }
 
-  .legend {
-    background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 8px;
-    overflow: hidden;
-    margin-top: 10px;
-    margin-bottom: 14px;
-  }
-  .legend h2 {
-    background: #202329;
-    color: var(--text);
-    margin: 0;
-    padding: 12px 14px;
-    min-height: 52px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 0.01em;
-    cursor: pointer;
-  }
-  .legend .chev { flex: 0 0 auto; opacity: 0.75; transition: transform 0.15s ease; }
-  .legend h2.open .chev { transform: rotate(180deg); }
-  .legend-body { padding: 8px 0 6px; }
-  .legend-row {
-    display: flex;
-    gap: 10px;
-    padding: 10px 14px;
-    font-size: 13px;
-  }
-  .legend-row p { margin: 2px 0 0 0; color: var(--text-dim); }
-  .legend-swatch {
-    flex: 0 0 auto;
-    width: 14px;
-    height: 14px;
-    border-radius: 4px;
-    margin-top: 3px;
-  }
+  .legend { margin-top: 10px; }
+  .legend > h2 { color: #8b9199; }
+  .legend .caret { color: #8b9199; }
+  .legend-row { display: flex; margin: 9px 0; font-family: var(--mono); font-size: 12px; }
+  .legend-key { flex: 0 0 74px; color: #6f7680; letter-spacing: 1px; }
+  .legend-value { flex: 1 1 auto; color: #9aa1aa; }
   .card-header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .issue-link { color: var(--text-dim); text-decoration: none; font-weight: 600; min-height: 0; font-size: 13px; line-height: 1.4; }
   .issue-title { font-size: 16.5px; font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; margin: 0 0 var(--s-2); flex: 1; }
@@ -573,12 +553,43 @@
 <div id="app">
 
   <header>
-    <span class="wordmark">
-      <span class="mark">BHH</span>
-      <span class="wm-text">ops</span>
-    </span>
-    <button id="refreshBtn" type="button" title="Refresh">&#8635;</button>
+    <div class="wordmark-col">
+      <span class="wordmark">
+        <span class="mark">BHH</span>
+        <span class="wm-text">ops</span>
+      </span>
+      <div class="synced" id="syncedEl">SYNCED --:--:--</div>
+    </div>
+    <button id="refreshBtn" class="refresh" type="button" title="Refresh"><span class="glyph">&#8635;</span></button>
   </header>
+
+  <details id="runControls" class="panel-full terminal term-panel">
+    <summary><span class="caret">&gt;</span> Terminal</summary>
+    <div id="runControlsBody" class="panel-body">
+      <p id="rcNoControl" class="no-verdict hidden">No control issue found</p>
+      <form id="runControlsForm">
+        <label>Hours
+          <input type="number" id="rcHours" min="1" max="8" value="4">
+        </label>
+        <label>Rate
+          <input type="number" id="rcRate" min="1" max="6" value="2">
+        </label>
+        <div class="card-actions">
+          <button id="rcRunBtn" type="button" disabled>Run now</button>
+          <button id="rcPaceBtn" type="button" disabled>Set tonight's pace</button>
+          <button id="rcSkipBtn" type="button" disabled>Skip tonight</button>
+        </div>
+      </form>
+      <div id="rcStatus" class="card-status"></div>
+      <div class="run-controls-feed">
+        <div class="run-controls-feed-head">
+          <h3>Status feed</h3>
+          <button id="rcRefreshBtn" type="button" disabled>Refresh</button>
+        </div>
+        <div id="rcFeed"></div>
+      </div>
+    </div>
+  </details>
 
   <div id="banner" class="banner hidden"></div>
 
@@ -608,36 +619,8 @@
     <main id="board"></main>
   </div>
 
-  <details id="runControls" class="panel-full terminal">
-    <summary><span class="caret">&gt;</span> Terminal</summary>
-    <div id="runControlsBody" class="panel-body">
-      <p id="rcNoControl" class="no-verdict hidden">No control issue found</p>
-      <form id="runControlsForm">
-        <label>Hours
-          <input type="number" id="rcHours" min="1" max="8" value="4">
-        </label>
-        <label>Rate
-          <input type="number" id="rcRate" min="1" max="6" value="2">
-        </label>
-        <div class="card-actions">
-          <button id="rcRunBtn" type="button" disabled>Run now</button>
-          <button id="rcPaceBtn" type="button" disabled>Set tonight's pace</button>
-          <button id="rcSkipBtn" type="button" disabled>Skip tonight</button>
-        </div>
-      </form>
-      <div id="rcStatus" class="card-status"></div>
-      <div class="run-controls-feed">
-        <div class="run-controls-feed-head">
-          <h3>Status feed</h3>
-          <button id="rcRefreshBtn" type="button" disabled>Refresh</button>
-        </div>
-        <div id="rcFeed"></div>
-      </div>
-    </div>
-  </details>
-
-  <section class="legend" id="legend">
-    <h2 id="legendToggle">Reference <span class="chev">&#9662;</span></h2>
+  <section class="legend term-panel" id="legend">
+    <h2 id="legendToggle"><span class="caret">#</span> Reference</h2>
     <div class="legend-body panel-body" id="legendBody" hidden></div>
   </section>
 
@@ -668,6 +651,7 @@
   var aqNotesEl = document.getElementById("aqNotes");
   var legendToggleEl = document.getElementById("legendToggle");
   var legendBodyEl = document.getElementById("legendBody");
+  var syncedEl = document.getElementById("syncedEl");
 
   var runControlsEl = document.getElementById("runControls");
   var rcNoControlEl = document.getElementById("rcNoControl");
@@ -1093,62 +1077,80 @@
   }
 
   var SECTION_DEFS = [
-    { n: 6, step: "02", title: "Captured", hue: "var(--sec-captured)", blurb: "Raw captures. The nightly groomer expands these into specs." },
-    { n: 7, step: "03", title: "Groomed", hue: "var(--sec-promote)", blurb: "Groomed specs. Promote to hand one to tonight's runner." },
-    { n: 5, step: "04", title: "Ready", hue: "var(--sec-ready)", blurb: "Promoted, waiting for the runner. Run next jumps the line." },
-    { n: 2, step: "05", title: "Review", hue: "var(--sec-review)", blurb: "Agent work done, no verdict posted yet. Nothing to do here." },
-    { n: 1, step: "06", title: "Decision", hue: "var(--sec-decision)", blurb: "Waiting on your yes or no. Green = one tap; red = read the diff first." },
-    { n: 3, step: "07", title: "Approved", hue: "var(--sec-approved)", blurb: "Approved; merges automatically at 1:30AM. Watch only." },
-    { n: 4, step: "!!", title: "Blocked", hue: "var(--sec-blocked)", blurb: "Stuck, contradictory, or hands-only items. Read each card." }
+    { n: 6, step: "02", title: "Captured", hue: "var(--sec-captured)", blurb: "Raw captures. The nightly groomer expands these into specs.", empty: "Nothing waiting to be groomed." },
+    { n: 7, step: "03", title: "Groomed", hue: "var(--sec-promote)", blurb: "Groomed specs. Promote to hand one to tonight's runner.", empty: "Nothing waiting to be promoted." },
+    { n: 5, step: "04", title: "Ready", hue: "var(--sec-ready)", blurb: "Promoted, waiting for the runner. Run next jumps the line.", empty: "Nothing queued for tonight." },
+    { n: 2, step: "05", title: "Review", hue: "var(--sec-review)", blurb: "Agent work done, no verdict posted yet. Nothing to do here.", empty: "No branches waiting on the reviewer." },
+    { n: 1, step: "06", title: "Decision", hue: "var(--sec-decision)", blurb: "Waiting on your yes or no. Green = one tap; red = read the diff first.", empty: "No verdicts waiting on you." },
+    { n: 3, step: "07", title: "Approved", hue: "var(--sec-approved)", blurb: "Approved; merges automatically at 1:30AM. Watch only.", empty: "Nothing waiting for the 1:30AM merge." },
+    { n: 4, step: "!!", title: "Blocked", hue: "var(--sec-blocked)", blurb: "Stuck, contradictory, or hands-only items. Read each card.", empty: "Nothing blocked." }
   ];
 
   function renderLegend() {
     var html = "";
     for (var i = 0; i < SECTION_DEFS.length; i++) {
       var sd = SECTION_DEFS[i];
-      html += '<div class="legend-row"><span class="legend-swatch" style="background:' + sd.hue + '"></span>'
-        + '<div><b>' + escapeHtml(sd.step + " " + sd.title) + '</b><p>' + escapeHtml(sd.blurb) + '</p></div></div>';
+      html += '<div class="legend-row"><div class="legend-key">' + escapeHtml(sd.step + " " + sd.title) + '</div><div class="legend-value">' + escapeHtml(sd.blurb) + '</div></div>';
     }
-    html = '<div class="legend-row"><span class="legend-swatch" style="background:var(--sec-queue)"></span>'
-      + '<div><b>01 Queue</b><p>Drop a one-line task; the groomer specs it overnight.</p></div></div>'
-      + html;
-    html += '<div class="legend-row"><span class="legend-swatch" style="background:#050505;border:1px solid rgba(212,240,74,0.4)"></span>'
-      + '<div><b>Terminal</b><p>Start, pace, or skip tonight\'s run.</p></div></div>';
+    html = '<div class="legend-row"><div class="legend-key">01 Queue</div><div class="legend-value">Drop a one-line task; the groomer specs it overnight.</div></div>' + html;
+    html += '<div class="legend-row"><div class="legend-key">Terminal</div><div class="legend-value">Start, pace, or skip tonight\'s run.</div></div>';
     legendBodyEl.innerHTML = html;
   }
 
   function renderBoard(sections, warnings, verdictData, totalCount) {
-    if (totalCount === 0) {
-      boardEl.innerHTML = '<p class="empty">Nothing in the pipeline.</p>';
-      return;
-    }
     var html = "";
     for (var i = 0; i < SECTION_DEFS.length; i++) {
       var sd = SECTION_DEFS[i];
-      var items = sections[sd.n];
-      if (!items || !items.length) continue;
+      var items = sections[sd.n] || [];
+      var isEmpty = items.length === 0;
       var collapsedClass = openSections.has(sd.n) ? "" : " collapsed";
-      html += '<section class="board-section' + collapsedClass + '" style="--sec:' + sd.hue + '">'
+      var emptyClass = isEmpty ? " empty" : "";
+      html += '<section class="board-section' + collapsedClass + emptyClass + '" style="--sec:' + sd.hue + '">'
         + '<h2 data-sec="' + sd.n + '" role="button" tabindex="0"><span class="step-num">' + sd.step + '</span><span class="count-pill">' + items.length + '</span><span class="sec-title">' + escapeHtml(sd.title) + '</span></h2>'
-        + '<div class="sec-body"><div class="card-list">';
-      for (var j = 0; j < items.length; j++) {
-        var issue = items[j];
-        if (sd.n === 1) {
-          html += renderNeedsDecisionCard(issue, verdictData[issue.number]);
-        } else if (sd.n === 5) {
-          html += renderReadyCard(issue);
-        } else if (sd.n === 7) {
-          html += renderProposedCard(issue);
-        } else {
-          html += renderReadOnlyCard(issue, { warning: warnings[issue.number] });
+        + '<div class="sec-body">';
+      if (isEmpty) {
+        html += '<div class="empty-line">' + escapeHtml(sd.empty) + '</div>';
+      } else {
+        html += '<div class="card-list">';
+        for (var j = 0; j < items.length; j++) {
+          var issue = items[j];
+          if (sd.n === 1) {
+            html += renderNeedsDecisionCard(issue, verdictData[issue.number]);
+          } else if (sd.n === 5) {
+            html += renderReadyCard(issue);
+          } else if (sd.n === 7) {
+            html += renderProposedCard(issue);
+          } else {
+            html += renderReadOnlyCard(issue, { warning: warnings[issue.number] });
+          }
         }
+        html += "</div>";
       }
-      html += "</div></div></section>";
+      html += "</div></section>";
     }
     boardEl.innerHTML = html;
   }
 
   // ---- board load ----
+
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+
+  function markSynced() {
+    var now = new Date();
+    syncedEl.textContent = "SYNCED " + pad2(now.getHours()) + ":" + pad2(now.getMinutes()) + ":" + pad2(now.getSeconds());
+    if (refreshBtn.classList.contains("busy")) {
+      refreshBtn.classList.remove("busy");
+      refreshBtn.classList.add("ok");
+      var glyphEl = refreshBtn.querySelector(".glyph");
+      if (glyphEl) glyphEl.innerHTML = "&#10003;";
+      syncedEl.classList.add("flash");
+      setTimeout(function () {
+        refreshBtn.classList.remove("ok");
+        if (glyphEl) glyphEl.innerHTML = "&#8635;";
+        syncedEl.classList.remove("flash");
+      }, 900);
+    }
+  }
 
   function loadBoard() {
     hideBanner();
@@ -1178,11 +1180,13 @@
 
         return Promise.all(fetches).then(function () {
           renderBoard(sections, warnings, verdictData, issues.length);
+          markSynced();
         });
       })
       .catch(function (err) {
         boardEl.innerHTML = "";
         handleError(err);
+        refreshBtn.classList.remove("busy");
       });
   }
 
@@ -1402,7 +1406,10 @@
 
   // ---- header / add to queue ----
 
-  refreshBtn.addEventListener("click", function () { loadBoard(); });
+  refreshBtn.addEventListener("click", function () {
+    refreshBtn.classList.add("busy");
+    loadBoard();
+  });
 
   legendToggleEl.addEventListener("click", function () {
     legendBodyEl.hidden = !legendBodyEl.hidden;
@@ -1584,6 +1591,7 @@
     } else {
       loadBoard();
     }
+    setInterval(loadBoard, 60000);
   }
 
   init();
