@@ -584,6 +584,17 @@
     <button id="refreshBtn" class="refresh" type="button" title="Refresh"><span class="glyph">&#8635;</span></button>
   </header>
 
+  <div id="banner" class="banner hidden"></div>
+
+  <div id="setupCard" class="setup-card hidden">
+    <h2>Set up token</h2>
+    <p>Enter a GitHub personal access token with access to beifongshopmail-cpu/bhh-ops. It is stored only in this browser's local storage.</p>
+    <div class="row">
+      <input type="password" id="tokenInput" placeholder="github_pat_...">
+      <button id="saveTokenBtn" type="button">Save</button>
+    </div>
+  </div>
+
   <details id="runControls" class="panel-full terminal term-panel">
     <summary><span class="caret">&gt;</span> Terminal</summary>
     <div id="runControlsBody" class="panel-body">
@@ -611,17 +622,6 @@
       </div>
     </div>
   </details>
-
-  <div id="banner" class="banner hidden"></div>
-
-  <div id="setupCard" class="setup-card hidden">
-    <h2>Set up token</h2>
-    <p>Enter a GitHub personal access token with access to beifongshopmail-cpu/bhh-ops. It is stored only in this browser's local storage.</p>
-    <div class="row">
-      <input type="password" id="tokenInput" placeholder="github_pat_...">
-      <button id="saveTokenBtn" type="button">Save</button>
-    </div>
-  </div>
 
   <div class="board-grid">
     <details id="addQueue" class="panel-tile" style="--sec: var(--sec-queue)">
@@ -1120,7 +1120,7 @@
 
     if (why) html += '<div class="why">' + escapeHtml(why) + "</div>";
 
-    html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
+    if (!pathMismatch) html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
     if (g.branch) html += '<p class="fact-line">Branch: ' + escapeHtml(g.branch) + "</p>";
     html += '<p class="fact-line">Test: ' + escapeHtml(g.test) + "</p>";
     if (g.files.length) {
@@ -1323,7 +1323,7 @@
         });
 
         var blockedData = {};
-        var blockedFetches = sections[4].filter(function (issue) {
+        var blockedFetches = (sections[4] || []).filter(function (issue) {
           var labels = getLabelNames(issue);
           var isManualOnly = labels.indexOf("manual-only") !== -1;
           var isHalfPromoted = labels.indexOf("proposed") !== -1 && labels.indexOf("ready") !== -1;
@@ -1837,7 +1837,6 @@
     } else {
       loadBoard();
     }
-    setInterval(loadBoard, 60000);
   }
 
   init();
