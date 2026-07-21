@@ -538,6 +538,27 @@
   }
   .deny-text { margin-top: 8px; }
 
+  .badge {
+    font-family: var(--mono); font-size: 11px; letter-spacing: 1px;
+    text-transform: uppercase; padding: 3px 8px; border-radius: 5px;
+    border: 1px solid;
+  }
+  .b-fail   { color:#ff7a45; border-color:#5a2a15; background:#20110a; }
+  .b-manual { color:#8b9199; border-color:#2a2e35; background:#15171a; }
+  .b-half   { color:#f4d35e; border-color:#4a4222; background:#1c190c; }
+  .badges   { display:flex; flex-wrap:wrap; gap:6px; margin:9px 0; }
+  .why {
+    background:#1d2025; border-left:2px solid #5a2a15; padding:8px 10px;
+    border-radius:0 6px 6px 0; font-family: var(--mono); font-size:12px;
+    color:#c9b3a6; margin:9px 0; white-space:pre-wrap;
+  }
+  .fact { margin: 6px 0 0 0; font-family: var(--mono); font-size: 12.5px; line-height: 1.5; color: var(--text-dim); overflow-wrap: anywhere; }
+  .fact.bad { color:#ff9a70; }
+  .note { font-family: var(--mono); font-size:11px; color:#6f7680; margin-top:9px; }
+  .card-actions .btn-requeue { color:#2ec4b6; border-color:#1d6b64; }
+  .card-actions .btn-close   { color:#8b9199; border-color:#2a2e35; }
+  .card-actions .btn-finish  { color:#f4d35e; border-color:#5c5228; }
+
   .empty, .loading { color: var(--text-dim); text-align: center; padding: 40px 0; }
 
   footer {
@@ -928,6 +949,35 @@
     };
   }
 
+  // ---- blocked-card helpers ----
+
+  var FAILURE_CLASS_RE = /FAILURE-CLASS[:\s]+([A-Z0-9_-]+)/;
+
+  function parseFailureClass(comments) {
+    var token = null;
+    for (var i = comments.length - 1; i >= 0 && !token; i--) {
+      var lines = (comments[i].body || "").split("\n");
+      for (var j = 0; j < lines.length; j++) {
+        var m = lines[j].match(FAILURE_CLASS_RE);
+        if (m) { token = m[1]; break; }
+      }
+    }
+    var why = comments.length ? (comments[comments.length - 1].body || "").slice(0, 400) : null;
+    return { failureClass: token, why: why };
+  }
+
+  var REPO_PATH_MAP = {
+    engine: "C:\\dev\\tcg-price-engine",
+    ops: "C:\\dev\\bhh-ops",
+    buylist: "C:\\dev\\bhh-buylist",
+    binder: "C:\\dev\\bhh-binder"
+  };
+  var REPO_PATH_LABELS = ["engine", "ops", "buylist", "binder"];
+
+  function normalizePath(p) {
+    return String(p || "").toLowerCase().replace(/\\+$/, "");
+  }
+
   // ---- classification ----
 
   function classify(issue) {
@@ -1015,6 +1065,98 @@
     return html;
   }
 
+  function renderManualOnlyCard(issue) {
+    var num = issue.number;
+    var g = parseGroom(issue);
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    html += '<div class="badges"><span class="badge b-manual">MANUAL-ONLY</span></div>';
+    html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
+    html += '<div class="note">Manual-only by design. The runner never claims this issue; no actions apply.</div>';
+    html += "</div>";
+    return html;
+  }
+
+  function renderHalfPromotedCard(issue) {
+    var num = issue.number;
+    var g = parseGroom(issue);
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    html += '<div class="badges"><span class="badge b-half">HALF-PROMOTED</span></div>';
+    html += '<div class="why">Carries both proposed and ready. The runner skips issues with both labels.</div>';
+    html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
+    if (g.branch) html += '<p class="fact-line">Branch: ' + escapeHtml(g.branch) + "</p>";
+    html += '<p class="fact-line">Test: ' + escapeHtml(g.test) + "</p>";
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-finish" type="button" data-action="finish-promote" data-issue="' + num + '">Finish promote</button>';
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
+  function renderRunnerBlockedCard(issue, blocked) {
+    var num = issue.number;
+    var g = parseGroom(issue);
+    var labels = getLabelNames(issue);
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+
+    var failToken = (blocked && blocked.failureClass) ? blocked.failureClass : "UNKNOWN";
+    var why = blocked ? blocked.why : null;
+
+    var pathLabel = null;
+    for (var i = 0; i < REPO_PATH_LABELS.length; i++) {
+      if (labels.indexOf(REPO_PATH_LABELS[i]) !== -1) { pathLabel = REPO_PATH_LABELS[i]; break; }
+    }
+    var pathMismatch = false;
+    if (pathLabel) {
+      pathMismatch = normalizePath(g.cwd) !== normalizePath(REPO_PATH_MAP[pathLabel]);
+    }
+
+    html += '<div class="badges"><span class="badge b-fail">' + escapeHtml(failToken) + "</span>";
+    if (pathMismatch) html += '<span class="badge b-fail">PATH MISMATCH</span>';
+    html += "</div>";
+
+    if (why) html += '<div class="why">' + escapeHtml(why) + "</div>";
+
+    html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
+    if (g.branch) html += '<p class="fact-line">Branch: ' + escapeHtml(g.branch) + "</p>";
+    html += '<p class="fact-line">Test: ' + escapeHtml(g.test) + "</p>";
+    if (g.files.length) {
+      html += '<ul class="files-list">' + g.files.map(function (f) {
+        return "<li>" + escapeHtml(f) + "</li>";
+      }).join("") + "</ul>";
+    } else {
+      html += '<p class="fact-line">Files: none listed</p>';
+    }
+
+    if (pathMismatch) {
+      html += '<div class="fact bad"><b>Repo:</b> ' + escapeHtml(g.cwd || "MISSING") + "</div>";
+      html += '<div class="fact bad"><b>Expected:</b> ' + escapeHtml(REPO_PATH_MAP[pathLabel]) + " (label: " + escapeHtml(pathLabel) + ")</div>";
+    }
+
+    if (!g.promotable) {
+      html += '<div class="warning-notice">No "## Repo / cwd" section -- the runner would block this. Requeue disabled.</div>';
+    }
+    html += '<div class="note">Fix the body on GitHub first. Requeue with an unchanged body repeats this result.</div>';
+
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-requeue" type="button" data-action="requeue" data-issue="' + num + '"' + (g.promotable ? "" : " disabled") + ">Requeue</button>";
+    html += '<button class="btn-close" type="button" data-action="close-issue" data-issue="' + num + '">Close</button>';
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
+  function renderBlockedCard(issue, blocked) {
+    var labels = getLabelNames(issue);
+    if (labels.indexOf("manual-only") !== -1) return renderManualOnlyCard(issue);
+    if (labels.indexOf("proposed") !== -1 && labels.indexOf("ready") !== -1) return renderHalfPromotedCard(issue);
+    return renderRunnerBlockedCard(issue, blocked);
+  }
+
   function renderNeedsDecisionCard(issue, v) {
     var num = issue.number;
     var hasVerdict = !!(v && v.verdict);
@@ -1097,7 +1239,7 @@
     legendBodyEl.innerHTML = html;
   }
 
-  function renderBoard(sections, warnings, verdictData, totalCount) {
+  function renderBoard(sections, warnings, verdictData, blockedData, totalCount) {
     var html = "";
     for (var i = 0; i < SECTION_DEFS.length; i++) {
       var sd = SECTION_DEFS[i];
@@ -1120,6 +1262,8 @@
             html += renderReadyCard(issue);
           } else if (sd.n === 7) {
             html += renderProposedCard(issue);
+          } else if (sd.n === 4) {
+            html += renderBlockedCard(issue, blockedData[issue.number]);
           } else {
             html += renderReadOnlyCard(issue, { warning: warnings[issue.number] });
           }
@@ -1178,8 +1322,24 @@
             });
         });
 
-        return Promise.all(fetches).then(function () {
-          renderBoard(sections, warnings, verdictData, issues.length);
+        var blockedData = {};
+        var blockedFetches = sections[4].filter(function (issue) {
+          var labels = getLabelNames(issue);
+          var isManualOnly = labels.indexOf("manual-only") !== -1;
+          var isHalfPromoted = labels.indexOf("proposed") !== -1 && labels.indexOf("ready") !== -1;
+          return !isManualOnly && !isHalfPromoted;
+        }).map(function (issue) {
+          return apiRequest("/repos/" + REPO + "/issues/" + issue.number + "/comments?per_page=100")
+            .then(function (comments) {
+              blockedData[issue.number] = parseFailureClass(comments);
+            })
+            .catch(function () {
+              blockedData[issue.number] = { failureClass: null, why: null };
+            });
+        });
+
+        return Promise.all(fetches.concat(blockedFetches)).then(function () {
+          renderBoard(sections, warnings, verdictData, blockedData, issues.length);
           markSynced();
         });
       })
@@ -1356,6 +1516,89 @@
     });
   }
 
+  function onRequeue(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    armConfirm(btn, "Confirm requeue?", "Requeue", function () {
+      btn.disabled = true;
+      apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+        .then(function (fresh) {
+          var freshLabels = getLabelNames(fresh);
+          if (freshLabels.indexOf("blocked") === -1) {
+            return showStatusThenReload(issueNumber, "state moved -- re-check");
+          }
+          if (freshLabels.indexOf("ready") !== -1) {
+            return showStatusThenReload(issueNumber, "already requeued");
+          }
+          showCardStatus(issueNumber, "requeuing...");
+          return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ labels: ["ready"] })
+          }).then(function () {
+            return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels/blocked", {
+              method: "DELETE"
+            });
+          }).then(function () {
+            showCardStatus(issueNumber, "requeued");
+            scheduleReload(2500);
+          });
+        })
+        .catch(function (err) {
+          handleError(err);
+          btn.disabled = false;
+        });
+    });
+  }
+
+  function onCloseIssue(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    armConfirm(btn, "Confirm close?", "Close", function () {
+      btn.disabled = true;
+      apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+        .then(function () {
+          showCardStatus(issueNumber, "closing...");
+          return apiRequest("/repos/" + REPO + "/issues/" + issueNumber, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ state: "closed" })
+          });
+        })
+        .then(function () {
+          showCardStatus(issueNumber, "closed");
+          scheduleReload(2500);
+        })
+        .catch(function (err) {
+          handleError(err);
+          btn.disabled = false;
+        });
+    });
+  }
+
+  function onFinishPromote(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    armConfirm(btn, "Confirm finish promote?", "Finish promote", function () {
+      btn.disabled = true;
+      apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+        .then(function (fresh) {
+          var freshLabels = getLabelNames(fresh);
+          if (freshLabels.indexOf("proposed") === -1) {
+            return showStatusThenReload(issueNumber, "already promoted");
+          }
+          showCardStatus(issueNumber, "finishing...");
+          return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels/proposed", {
+            method: "DELETE"
+          }).then(function () {
+            showCardStatus(issueNumber, "promoted");
+            scheduleReload(2500);
+          });
+        })
+        .catch(function (err) {
+          handleError(err);
+          btn.disabled = false;
+        });
+    });
+  }
+
   function toggleSectionAt(h2) {
     var secNum = Number(h2.dataset.sec);
     if (openSections.has(secNum)) openSections.delete(secNum);
@@ -1373,6 +1616,9 @@
     else if (btn.dataset.action === "deny") onDeny(btn);
     else if (btn.dataset.action === "run-next-toggle") onRunNextToggle(btn);
     else if (btn.dataset.action === "promote") onPromote(btn);
+    else if (btn.dataset.action === "requeue") onRequeue(btn);
+    else if (btn.dataset.action === "close-issue") onCloseIssue(btn);
+    else if (btn.dataset.action === "finish-promote") onFinishPromote(btn);
   });
 
   boardEl.addEventListener("keydown", function (e) {
