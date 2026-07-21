@@ -559,7 +559,7 @@
   .card-actions .btn-close   { color:#8b9199; border-color:#2a2e35; }
   .card-actions .btn-finish  { color:#f4d35e; border-color:#5c5228; }
 
-  .empty, .loading { color: var(--text-dim); text-align: center; padding: 40px 0; }
+  .loading { color: var(--text-dim); text-align: center; padding: 40px 0; }
 
   footer {
     margin-top: 24px;
@@ -1071,7 +1071,7 @@
     var html = '<div class="card" data-issue="' + num + '">';
     html += renderCardBody(issue);
     html += '<div class="badges"><span class="badge b-manual">MANUAL-ONLY</span></div>';
-    html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
+    if (g.cwd) html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd) + "</p>";
     html += '<div class="note">Manual-only by design. The runner never claims this issue; no actions apply.</div>';
     html += "</div>";
     return html;
