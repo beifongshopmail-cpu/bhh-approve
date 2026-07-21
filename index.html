@@ -43,6 +43,14 @@
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --shadow-card: inset 0 1px 0 rgba(255,255,255,0.03),
                    0 6px 20px rgba(0,0,0,0.35);
+    --sec-decision:  #d4f04a;
+    --sec-review:    #a78bfa;
+    --sec-approved:  #3ecfb2;
+    --sec-blocked:   #f06ac8;
+    --sec-promote:   #4dd6f0;
+    --sec-ready:     #6aa2f7;
+    --sec-captured:  #9aa3b2;
+    --sec-neutral:   #9aa3b2;
   }
   :root {
     --green-bg: #16301f;
@@ -122,13 +130,16 @@
     margin-bottom: var(--s-4);
   }
   .add-queue summary {
-    padding: 12px 0;
+    padding: 12px 10px;
     min-height: 44px;
     display: flex;
     align-items: center;
     cursor: pointer;
     font-weight: 600;
     list-style: none;
+    background: color-mix(in srgb, var(--sec) 12%, transparent);
+    border-left: 3px solid var(--sec);
+    border-radius: var(--r-sm);
   }
   .add-queue summary::-webkit-details-marker { display: none; }
   .add-queue summary::before { content: "+ "; }
@@ -232,6 +243,10 @@
     color: var(--text-dim);
     text-transform: uppercase;
     margin: var(--s-6) 0 var(--s-3);
+    background: color-mix(in srgb, var(--sec) 12%, transparent);
+    border-left: 3px solid var(--sec);
+    border-radius: var(--r-sm);
+    padding: 8px 10px;
   }
   .board-section h2::before {
     content: "";
@@ -239,7 +254,7 @@
     width: 6px;
     height: 6px;
     border-radius: var(--r-pill);
-    background: var(--accent);
+    background: var(--sec);
     margin-right: var(--s-2);
     vertical-align: middle;
   }
@@ -247,8 +262,9 @@
     display: inline-block; margin-left: var(--s-2);
     min-width: 20px; padding: 1px 7px;
     border-radius: var(--r-pill);
-    background: var(--surface-2); border: 1px solid var(--line);
-    color: var(--text-dim);
+    background: color-mix(in srgb, var(--sec) 18%, transparent);
+    border: 1px solid color-mix(in srgb, var(--sec) 35%, transparent);
+    color: var(--sec);
     font-size: 11px; font-weight: 700; letter-spacing: 0;
     text-transform: none; text-align: center;
   }
@@ -388,7 +404,7 @@
   <div id="banner" class="banner hidden"></div>
 
   <details id="addQueue" class="add-queue">
-    <summary>Add to queue</summary>
+    <summary style="--sec: var(--sec-neutral)">Add to queue</summary>
     <form id="addQueueForm">
       <label>Title
         <input type="text" id="aqTitle" required>
@@ -401,7 +417,7 @@
   </details>
 
   <details id="runControls" class="add-queue">
-    <summary>Run controls</summary>
+    <summary style="--sec: var(--sec-neutral)">Run controls</summary>
     <div id="runControlsBody">
       <p id="rcNoControl" class="no-verdict hidden">No control issue found</p>
       <form id="runControlsForm">
@@ -878,13 +894,13 @@
   }
 
   var SECTION_DEFS = [
-    { n: 1, title: "Needs decision" },
-    { n: 2, title: "Awaiting reviewer" },
-    { n: 3, title: "Approved, awaiting 1:30am" },
-    { n: 4, title: "Blocked / manual" },
-    { n: 7, title: "Groomed, awaiting promotion" },
-    { n: 5, title: "Ready / queued" },
-    { n: 6, title: "Captured (not yet groomed)" }
+    { n: 1, title: "Needs decision", hue: "var(--sec-decision)" },
+    { n: 2, title: "Awaiting reviewer", hue: "var(--sec-review)" },
+    { n: 3, title: "Approved, awaiting 1:30am", hue: "var(--sec-approved)" },
+    { n: 4, title: "Blocked / manual", hue: "var(--sec-blocked)" },
+    { n: 7, title: "Groomed, awaiting promotion", hue: "var(--sec-promote)" },
+    { n: 5, title: "Ready / queued", hue: "var(--sec-ready)" },
+    { n: 6, title: "Captured (not yet groomed)", hue: "var(--sec-captured)" }
   ];
 
   function renderBoard(sections, warnings, verdictData, totalCount) {
@@ -897,7 +913,7 @@
       var sd = SECTION_DEFS[i];
       var items = sections[sd.n];
       if (!items || !items.length) continue;
-      html += '<section class="board-section"><h2>' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2><div class="card-list">';
+      html += '<section class="board-section" style="--sec:' + sd.hue + '"><h2>' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2><div class="card-list">';
       for (var j = 0; j < items.length; j++) {
         var issue = items[j];
         if (sd.n === 1) {
