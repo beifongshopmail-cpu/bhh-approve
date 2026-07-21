@@ -247,17 +247,25 @@
     border-left: 3px solid var(--sec);
     border-radius: var(--r-sm);
     padding: 8px 10px;
+    cursor: pointer;
   }
   .board-section h2::before {
     content: "";
     display: inline-block;
     width: 6px;
     height: 6px;
-    border-radius: var(--r-pill);
-    background: var(--sec);
+    border-style: solid;
+    border-color: var(--sec);
+    border-width: 2px 2px 0 0;
     margin-right: var(--s-2);
     vertical-align: middle;
+    transform: rotate(45deg);
+    transition: transform 0.15s ease;
   }
+  .board-section:not(.collapsed) h2::before {
+    transform: rotate(135deg);
+  }
+  .collapsed .sec-body { display: none; }
   .sec-blurb {
     margin: 4px 0 0 0;
     font-size: 12px;
@@ -503,6 +511,7 @@
   var rcFeedEl = document.getElementById("rcFeed");
   var controlIssueNumber = null;
   var controlIssueLoaded = false;
+  var openSections = new Set([1]);
 
   function getToken() { return localStorage.getItem(TOKEN_KEY); }
   function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
@@ -923,7 +932,11 @@
       var sd = SECTION_DEFS[i];
       var items = sections[sd.n];
       if (!items || !items.length) continue;
-      html += '<section class="board-section" style="--sec:' + sd.hue + '"><h2>' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2><div class="sec-blurb">' + escapeHtml(sd.blurb) + '</div><div class="card-list">';
+      var collapsedClass = openSections.has(sd.n) ? "" : " collapsed";
+      html += '<section class="board-section' + collapsedClass + '" style="--sec:' + sd.hue + '">'
+        + '<h2 data-sec="' + sd.n + '" role="button" tabindex="0">' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2>'
+        + '<div class="sec-blurb">' + escapeHtml(sd.blurb) + '</div>'
+        + '<div class="sec-body"><div class="card-list">';
       for (var j = 0; j < items.length; j++) {
         var issue = items[j];
         if (sd.n === 1) {
@@ -936,7 +949,7 @@
           html += renderReadOnlyCard(issue, { warning: warnings[issue.number] });
         }
       }
-      html += "</div></section>";
+      html += "</div></div></section>";
     }
     boardEl.innerHTML = html;
   }
@@ -1131,13 +1144,29 @@
     });
   }
 
+  function toggleSectionAt(h2) {
+    var secNum = Number(h2.dataset.sec);
+    if (openSections.has(secNum)) openSections.delete(secNum);
+    else openSections.add(secNum);
+    var sectionEl = h2.closest(".board-section");
+    if (sectionEl) sectionEl.classList.toggle("collapsed");
+  }
+
   boardEl.addEventListener("click", function (e) {
+    var toggleH2 = e.target.closest("h2[data-sec]");
+    if (toggleH2) { toggleSectionAt(toggleH2); return; }
     var btn = e.target.closest("button[data-action]");
     if (!btn) return;
     if (btn.dataset.action === "approve") onApprove(btn);
     else if (btn.dataset.action === "deny") onDeny(btn);
     else if (btn.dataset.action === "run-next-toggle") onRunNextToggle(btn);
     else if (btn.dataset.action === "promote") onPromote(btn);
+  });
+
+  boardEl.addEventListener("keydown", function (e) {
+    if (e.key !== "Enter") return;
+    var toggleH2 = e.target.closest("h2[data-sec]");
+    if (toggleH2) toggleSectionAt(toggleH2);
   });
 
   // ---- setup card ----
