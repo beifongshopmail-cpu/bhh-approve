@@ -48,6 +48,9 @@
     --sec-promote:   #ff7ae0;
     --sec-ready:     #00e5b0;
     --sec-captured:  #8a94a6;
+    --sec-queue:     #ededed;
+    --ease: cubic-bezier(0.22, 0.72, 0.20, 1);
+    --dur: 260ms;
     --sec-neutral:   #2a2d33;
     --ink-on-sec:    #0b0b0d;
     --ink-on-neutral: #e8e8e8;
@@ -81,18 +84,31 @@
     padding: 12px 12px 40px 12px;
   }
   header {
+    position: relative;
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    padding: 8px 0 12px 0;
+    justify-content: center;
+    min-height: 52px;
+    margin-bottom: 16px;
+    padding: 0;
   }
-  header h1 {
-    font-size: 30px;
-    font-weight: 800;
-    letter-spacing: -0.02em;
-    line-height: 1.1;
-    margin: 0 0 var(--s-5);
+  .wordmark { display: inline-flex; align-items: center; gap: 9px; }
+  .wordmark .mark {
+    width: 38px; height: 38px; border-radius: 9px;
+    background: var(--accent); color: var(--accent-ink);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: 800; letter-spacing: -0.03em;
+  }
+  .wordmark .wm-text {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.16em;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  #refreshBtn {
+    position: absolute; right: 0; top: 50%; transform: translateY(-50%);
+    width: 44px; height: 44px; padding: 0; min-width: 44px;
+    border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    color: var(--text-dim); font-size: 18px;
   }
   button {
     font: inherit;
@@ -122,40 +138,6 @@
   .banner a { color: var(--text); }
   .hidden { display: none !important; }
 
-  .add-queue {
-    background: var(--surface);
-    border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 6px;
-    overflow: hidden;
-    padding: 0;
-    margin-bottom: 14px;
-  }
-  .add-queue > summary {
-    background: var(--sec-neutral);
-    color: var(--ink-on-neutral);
-    margin: 0;
-    padding: 14px 16px;
-    min-height: 44px;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-size: 15px;
-    font-weight: 800;
-    letter-spacing: 0.01em;
-    text-transform: none;
-    cursor: pointer;
-    list-style: none;
-  }
-  .add-queue > summary::-webkit-details-marker { display: none; }
-  .add-queue > summary::after {
-    content: "\25be";
-    color: var(--ink-on-neutral);
-    flex: 0 0 auto;
-    margin-left: auto;
-    opacity: 0.75;
-    transition: transform 0.15s ease;
-  }
-  .add-queue[open] > summary::after { transform: rotate(180deg); }
   #addQueueForm { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
   #addQueueForm label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--text-dim); }
   #addQueueForm button[type="submit"] {
@@ -254,42 +236,66 @@
   .setup-card .row { display: flex; gap: 8px; margin-top: 10px; }
   .setup-card input[type="password"] { flex: 1; }
 
-  .board-section {
+  .board-grid {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 10px;
+  }
+  #board { display: contents; }
+  #board > p { flex: 1 1 100%; max-width: 100%; }
+
+  .board-section, .panel-tile {
+    flex: 0 0 calc(50% - 5px);
+    max-width: calc(50% - 5px);
     background: var(--surface);
     border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 6px;
+    border-radius: 12px;
     overflow: hidden;
     padding: 0;
-    margin-bottom: 14px;
+    min-width: 0;
+    transition: flex-basis var(--dur) var(--ease),
+                max-width var(--dur) var(--ease),
+                border-radius var(--dur) var(--ease);
   }
-  .board-section h2 {
+  .board-section:not(.collapsed), .panel-tile[open] {
+    flex-basis: 100%;
+    max-width: 100%;
+    border-radius: 8px;
+  }
+
+  .board-section h2, .panel-tile > summary {
     background: var(--sec);
     color: var(--ink-on-sec);
     margin: 0;
-    padding: 14px 16px;
-    min-height: 44px;
+    padding: 11px 12px;
+    min-height: 104px;
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 10px;
-    font-size: 15px;
+    align-content: space-between;
+    gap: 8px;
+    font-size: 16px;
     font-weight: 800;
-    letter-spacing: 0.01em;
+    letter-spacing: -0.01em;
     text-transform: none;
     cursor: pointer;
+    list-style: none;
+    transition: min-height var(--dur) var(--ease), padding var(--dur) var(--ease);
   }
-  .board-section h2::after {
-    content: "\25be";
-    color: var(--ink-on-sec);
-    flex: 0 0 auto;
-    opacity: 0.75;
-    transition: transform 0.15s ease;
+  .panel-tile > summary::-webkit-details-marker { display: none; }
+
+  .step-num {
+    order: 1;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    opacity: 0.55;
   }
-  .board-section:not(.collapsed) h2::after {
-    transform: rotate(180deg);
-  }
-  .sec-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
-  .collapsed .sec-body { display: none; }
   .count-pill {
+    order: 2;
+    margin-left: auto;
     flex: 0 0 auto;
     background: #0b0b0d;
     color: var(--sec);
@@ -298,6 +304,94 @@
     font-size: 12px;
     font-weight: 700;
   }
+  .sec-title {
+    order: 3;
+    flex: 1 1 100%;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    line-height: 1.15;
+    transition: flex-basis var(--dur) var(--ease);
+  }
+
+  .board-section:not(.collapsed) h2,
+  .panel-tile[open] > summary {
+    min-height: 52px;
+    padding: 12px 14px;
+    flex-wrap: nowrap;
+  }
+  .board-section:not(.collapsed) .sec-title,
+  .panel-tile[open] > summary .sec-title { order: 2; flex: 1 1 0%; }
+  .board-section:not(.collapsed) .count-pill,
+  .panel-tile[open] > summary .count-pill { order: 3; }
+
+  .collapsed .sec-body { display: none; }
+  .sec-body, .panel-body { animation: reveal var(--dur) var(--ease) both; }
+  @keyframes reveal {
+    from { opacity: 0; transform: translateY(-6px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; animation: none !important; }
+  }
+
+  .queue-body { padding: 10px 12px 14px; }
+  .queue-body label { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--text-dim); }
+  .queue-body textarea { min-height: 76px; }
+
+  .panel-full {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-top: 10px;
+  }
+  .panel-full > summary {
+    margin: 0;
+    padding: 12px 14px;
+    min-height: 52px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    list-style: none;
+    font-size: 15px;
+    font-weight: 800;
+  }
+  .panel-full > summary::-webkit-details-marker { display: none; }
+
+  .terminal { border-color: rgba(212,240,74,0.30); }
+  .terminal > summary {
+    background: #050505;
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 13px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 700;
+  }
+  .terminal > summary .caret { opacity: 0.7; }
+  .terminal #runControlsBody { padding: 12px 14px 14px; background: #050505; }
+  .terminal #runControlsForm label {
+    font-family: var(--mono); font-size: 12px; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-dim);
+  }
+  .terminal input[type="number"] {
+    font-family: var(--mono); color: var(--accent);
+    background: #0d0d10; border: 1px solid #23271a; border-radius: 8px;
+  }
+  .terminal .card-actions { flex-wrap: wrap; }
+  .terminal .card-actions button {
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
+    text-transform: uppercase; border-radius: 8px; font-weight: 700;
+  }
+  .terminal #rcRunBtn { background: var(--accent); color: var(--accent-ink); border: 0; }
+  .terminal #rcPaceBtn { background: transparent; color: var(--accent); border: 1px solid rgba(212,240,74,0.4); }
+  .terminal #rcSkipBtn { background: transparent; color: var(--danger); border: 1px solid rgba(255,107,94,0.45); }
+  .terminal .run-controls-feed {
+    background: transparent; border: 0; border-top: 1px solid #1b1b1b;
+    border-radius: 0; padding: 10px 0 0 0; margin-bottom: 0;
+  }
+  .terminal #rcFeed .fact-line { color: #6f7a63; }
   .card-list { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
   .card {
     background: #141519;
@@ -310,16 +404,17 @@
   .legend {
     background: var(--surface);
     border: 1px solid rgba(255,255,255,0.07);
-    border-radius: 6px;
+    border-radius: 8px;
     overflow: hidden;
+    margin-top: 10px;
     margin-bottom: 14px;
   }
   .legend h2 {
-    background: #1a1b1f;
+    background: #202329;
     color: var(--text);
     margin: 0;
-    padding: 14px 16px;
-    min-height: 44px;
+    padding: 12px 14px;
+    min-height: 52px;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -343,6 +438,7 @@
     width: 14px;
     height: 14px;
     border-radius: 4px;
+    margin-top: 3px;
   }
   .card-header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .issue-link { color: var(--text-dim); text-decoration: none; font-weight: 600; min-height: 0; font-size: 13px; line-height: 1.4; }
@@ -447,6 +543,19 @@
     border: 1px solid currentColor;
     color: var(--danger);
   }
+  .card-actions { flex-wrap: wrap; }
+  .card-actions .btn-run-next {
+    flex: 0 0 auto;
+    min-height: 36px;
+    padding: 0 14px;
+    border-radius: var(--r-pill);
+    background: transparent;
+    border: 1px solid rgba(0,229,176,0.45);
+    color: var(--sec-ready);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
   .deny-text { margin-top: 8px; }
 
   .empty, .loading { color: var(--text-dim); text-align: center; padding: 40px 0; }
@@ -464,28 +573,44 @@
 <div id="app">
 
   <header>
-    <h1>bhh-ops approvals</h1>
-    <button id="refreshBtn" type="button">Refresh</button>
+    <span class="wordmark">
+      <span class="mark">BHH</span>
+      <span class="wm-text">ops</span>
+    </span>
+    <button id="refreshBtn" type="button" title="Refresh">&#8635;</button>
   </header>
 
   <div id="banner" class="banner hidden"></div>
 
-  <details id="addQueue" class="add-queue">
-    <summary style="--sec: var(--sec-neutral)">Add to queue</summary>
-    <form id="addQueueForm">
-      <label>Title
-        <input type="text" id="aqTitle" required>
-      </label>
-      <label>Notes (optional)
-        <textarea id="aqNotes"></textarea>
-      </label>
-      <button type="submit">Add issue</button>
-    </form>
-  </details>
+  <div id="setupCard" class="setup-card hidden">
+    <h2>Set up token</h2>
+    <p>Enter a GitHub personal access token with access to beifongshopmail-cpu/bhh-ops. It is stored only in this browser's local storage.</p>
+    <div class="row">
+      <input type="password" id="tokenInput" placeholder="github_pat_...">
+      <button id="saveTokenBtn" type="button">Save</button>
+    </div>
+  </div>
 
-  <details id="runControls" class="add-queue">
-    <summary style="--sec: var(--sec-neutral)">Run controls</summary>
-    <div id="runControlsBody">
+  <div class="board-grid">
+    <details id="addQueue" class="panel-tile" style="--sec: var(--sec-queue)">
+      <summary><span class="step-num">01</span><span class="sec-title">Queue</span></summary>
+      <form id="addQueueForm" class="queue-body panel-body">
+        <label>Title
+          <input type="text" id="aqTitle" required>
+        </label>
+        <label>Notes (optional)
+          <textarea id="aqNotes"></textarea>
+        </label>
+        <button type="submit">Add issue</button>
+      </form>
+    </details>
+
+    <main id="board"></main>
+  </div>
+
+  <details id="runControls" class="panel-full terminal">
+    <summary><span class="caret">&gt;</span> Terminal</summary>
+    <div id="runControlsBody" class="panel-body">
       <p id="rcNoControl" class="no-verdict hidden">No control issue found</p>
       <form id="runControlsForm">
         <label>Hours
@@ -511,21 +636,10 @@
     </div>
   </details>
 
-  <div id="setupCard" class="setup-card hidden">
-    <h2>Set up token</h2>
-    <p>Enter a GitHub personal access token with access to beifongshopmail-cpu/bhh-ops. It is stored only in this browser's local storage.</p>
-    <div class="row">
-      <input type="password" id="tokenInput" placeholder="github_pat_...">
-      <button id="saveTokenBtn" type="button">Save</button>
-    </div>
-  </div>
-
   <section class="legend" id="legend">
-    <h2 id="legendToggle">Reference sheet <span class="chev">&#9662;</span></h2>
-    <div class="legend-body" id="legendBody" hidden></div>
+    <h2 id="legendToggle">Reference <span class="chev">&#9662;</span></h2>
+    <div class="legend-body panel-body" id="legendBody" hidden></div>
   </section>
-
-  <main id="board"></main>
 
   <footer>
     <a href="#" id="changeTokenLink">change token</a>
@@ -568,6 +682,16 @@
   var controlIssueNumber = null;
   var controlIssueLoaded = false;
   var openSections = new Set([1]);
+  var openDiffs = new Set();
+  var reloadTimer = null;
+
+  function scheduleReload(delay) {
+    if (reloadTimer) clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(function () {
+      reloadTimer = null;
+      loadBoard();
+    }, delay || 2500);
+  }
 
   function getToken() { return localStorage.getItem(TOKEN_KEY); }
   function setToken(t) { localStorage.setItem(TOKEN_KEY, t); }
@@ -895,7 +1019,7 @@
     } else {
       html += '<p class="fact-line">Files: none listed</p>';
     }
-    html += '<details class="diff-details"><summary>View full body</summary><pre class="diff-pre">' + escapeHtml(issue.body || "(empty)") + "</pre></details>";
+    html += '<details class="diff-details" data-diff="' + num + '"' + (openDiffs.has(num) ? " open" : "") + '><summary>View full body</summary><pre class="diff-pre">' + escapeHtml(issue.body || "(empty)") + "</pre></details>";
     if (!g.promotable) {
       html += '<div class="warning-notice">No "## Repo / cwd" section -- the runner would block this. Fix the body on GitHub before promoting.</div>';
     }
@@ -949,7 +1073,7 @@
       }
 
       if (v.diffComment) {
-        html += '<details class="diff-details"><summary>View diff</summary><pre class="diff-pre">' + escapeHtml(v.diffComment) + "</pre></details>";
+        html += '<details class="diff-details" data-diff="' + num + '"' + (openDiffs.has(num) ? " open" : "") + '><summary>View diff</summary><pre class="diff-pre">' + escapeHtml(v.diffComment) + "</pre></details>";
         html += '<p class="review-note">Reviewed @ ' + escapeHtml(shortSha) + "</p>";
       } else {
         html += '<p class="review-note">Reviewed @ ' + escapeHtml(shortSha) + " -- diff visible after merge.</p>";
@@ -969,13 +1093,13 @@
   }
 
   var SECTION_DEFS = [
-    { n: 1, title: "Needs decision", hue: "var(--sec-decision)", blurb: "Reviewed work waiting on your yes or no. GREEN = one tap; RED = read the diff first." },
-    { n: 2, title: "Awaiting reviewer", hue: "var(--sec-review)", blurb: "Agent work done, no verdict posted yet. Nothing to do here." },
-    { n: 3, title: "Approved, awaiting 1:30am", hue: "var(--sec-approved)", blurb: "Approved; merges automatically at 1:30AM. Watch only." },
-    { n: 4, title: "Blocked / manual", hue: "var(--sec-blocked)", blurb: "Stuck, contradictory, or hands-only items. Read each card." },
-    { n: 7, title: "Groomed, awaiting promotion", hue: "var(--sec-promote)", blurb: "Groomed specs. Promote to hand one to tonight's runner." },
-    { n: 5, title: "Ready / queued", hue: "var(--sec-ready)", blurb: "Promoted, waiting for the runner. Run next jumps the line." },
-    { n: 6, title: "Captured (not yet groomed)", hue: "var(--sec-captured)", blurb: "Raw captures. The nightly groomer expands these into specs." }
+    { n: 6, step: "02", title: "Captured", hue: "var(--sec-captured)", blurb: "Raw captures. The nightly groomer expands these into specs." },
+    { n: 7, step: "03", title: "Groomed", hue: "var(--sec-promote)", blurb: "Groomed specs. Promote to hand one to tonight's runner." },
+    { n: 5, step: "04", title: "Ready", hue: "var(--sec-ready)", blurb: "Promoted, waiting for the runner. Run next jumps the line." },
+    { n: 2, step: "05", title: "Review", hue: "var(--sec-review)", blurb: "Agent work done, no verdict posted yet. Nothing to do here." },
+    { n: 1, step: "06", title: "Decision", hue: "var(--sec-decision)", blurb: "Waiting on your yes or no. Green = one tap; red = read the diff first." },
+    { n: 3, step: "07", title: "Approved", hue: "var(--sec-approved)", blurb: "Approved; merges automatically at 1:30AM. Watch only." },
+    { n: 4, step: "!!", title: "Blocked", hue: "var(--sec-blocked)", blurb: "Stuck, contradictory, or hands-only items. Read each card." }
   ];
 
   function renderLegend() {
@@ -983,12 +1107,13 @@
     for (var i = 0; i < SECTION_DEFS.length; i++) {
       var sd = SECTION_DEFS[i];
       html += '<div class="legend-row"><span class="legend-swatch" style="background:' + sd.hue + '"></span>'
-        + '<div><b>' + escapeHtml(sd.title) + '</b><p>' + escapeHtml(sd.blurb) + '</p></div></div>';
+        + '<div><b>' + escapeHtml(sd.step + " " + sd.title) + '</b><p>' + escapeHtml(sd.blurb) + '</p></div></div>';
     }
-    html += '<div class="legend-row"><span class="legend-swatch" style="background:var(--sec-neutral)"></span>'
-      + '<div><b>Add to queue</b><p>Drop a one-line task; the groomer specs it overnight.</p></div></div>';
-    html += '<div class="legend-row"><span class="legend-swatch" style="background:var(--sec-neutral)"></span>'
-      + '<div><b>Run controls</b><p>Start, pace, or skip tonight\'s run.</p></div></div>';
+    html = '<div class="legend-row"><span class="legend-swatch" style="background:var(--sec-queue)"></span>'
+      + '<div><b>01 Queue</b><p>Drop a one-line task; the groomer specs it overnight.</p></div></div>'
+      + html;
+    html += '<div class="legend-row"><span class="legend-swatch" style="background:#050505;border:1px solid rgba(212,240,74,0.4)"></span>'
+      + '<div><b>Terminal</b><p>Start, pace, or skip tonight\'s run.</p></div></div>';
     legendBodyEl.innerHTML = html;
   }
 
@@ -1004,7 +1129,7 @@
       if (!items || !items.length) continue;
       var collapsedClass = openSections.has(sd.n) ? "" : " collapsed";
       html += '<section class="board-section' + collapsedClass + '" style="--sec:' + sd.hue + '">'
-        + '<h2 data-sec="' + sd.n + '" role="button" tabindex="0"><span class="sec-title">' + escapeHtml(sd.title) + '</span><span class="count-pill">' + items.length + '</span></h2>'
+        + '<h2 data-sec="' + sd.n + '" role="button" tabindex="0"><span class="step-num">' + sd.step + '</span><span class="count-pill">' + items.length + '</span><span class="sec-title">' + escapeHtml(sd.title) + '</span></h2>'
         + '<div class="sec-body"><div class="card-list">';
       for (var j = 0; j < items.length; j++) {
         var issue = items[j];
@@ -1027,7 +1152,9 @@
 
   function loadBoard() {
     hideBanner();
-    boardEl.innerHTML = '<p class="loading">Loading...</p>';
+    if (!boardEl.querySelector(".board-section")) {
+      boardEl.innerHTML = '<p class="loading">Loading...</p>';
+    }
 
     return apiRequest("/repos/" + REPO + "/issues?state=open&per_page=100")
       .then(function (issues) {
@@ -1068,7 +1195,7 @@
 
   function showStatusThenReload(issueNumber, msg) {
     showCardStatus(issueNumber, msg);
-    return sleep(1500).then(loadBoard);
+    scheduleReload(1500);
   }
 
   // ---- approve / deny handlers ----
@@ -1111,7 +1238,10 @@
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ labels: ["approved"] })
-            }).then(loadBoard);
+            }).then(function () {
+              showCardStatus(issueNumber, "approved");
+              scheduleReload(2500);
+            });
           });
       })
       .catch(function (err) {
@@ -1152,7 +1282,10 @@
                   body: JSON.stringify({ body: "Rejected via approval page: " + text })
                 });
               }
-            }).then(loadBoard);
+            }).then(function () {
+              showCardStatus(issueNumber, "rejected");
+              scheduleReload(2500);
+            });
           });
       })
       .catch(function (err) {
@@ -1172,7 +1305,10 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ labels: ["run-next"] })
         });
-    req.then(loadBoard).catch(function (err) {
+    req.then(function () {
+      showCardStatus(issueNumber, "updated");
+      scheduleReload(2500);
+    }).catch(function (err) {
       handleError(err);
       btn.disabled = false;
     });
@@ -1204,7 +1340,10 @@
               btn.disabled = false;
               throw err;
             });
-          }).then(loadBoard);
+          }).then(function () {
+            showCardStatus(issueNumber, "promoted");
+            scheduleReload(2500);
+          });
         })
         .catch(function (err) {
           handleError(err);
@@ -1237,6 +1376,14 @@
     var toggleH2 = e.target.closest("h2[data-sec]");
     if (toggleH2) toggleSectionAt(toggleH2);
   });
+
+  boardEl.addEventListener("toggle", function (e) {
+    var d = e.target;
+    if (!d || !d.dataset || !d.dataset.diff) return;
+    var key = Number(d.dataset.diff);
+    if (d.open) openDiffs.add(key);
+    else openDiffs.delete(key);
+  }, true);
 
   // ---- setup card ----
 
