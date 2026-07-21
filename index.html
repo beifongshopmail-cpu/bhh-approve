@@ -258,6 +258,14 @@
     margin-right: var(--s-2);
     vertical-align: middle;
   }
+  .sec-blurb {
+    margin: 4px 0 0 0;
+    font-size: 12px;
+    font-weight: 400;
+    letter-spacing: normal;
+    text-transform: none;
+    color: var(--text-dim);
+  }
   .count-pill {
     display: inline-block; margin-left: var(--s-2);
     min-width: 20px; padding: 1px 7px;
@@ -405,6 +413,7 @@
 
   <details id="addQueue" class="add-queue">
     <summary style="--sec: var(--sec-neutral)">Add to queue</summary>
+    <div class="sec-blurb">Drop a one-line task; the groomer specs it overnight.</div>
     <form id="addQueueForm">
       <label>Title
         <input type="text" id="aqTitle" required>
@@ -418,6 +427,7 @@
 
   <details id="runControls" class="add-queue">
     <summary style="--sec: var(--sec-neutral)">Run controls</summary>
+    <div class="sec-blurb">Start, pace, or skip tonight's run.</div>
     <div id="runControlsBody">
       <p id="rcNoControl" class="no-verdict hidden">No control issue found</p>
       <form id="runControlsForm">
@@ -894,13 +904,13 @@
   }
 
   var SECTION_DEFS = [
-    { n: 1, title: "Needs decision", hue: "var(--sec-decision)" },
-    { n: 2, title: "Awaiting reviewer", hue: "var(--sec-review)" },
-    { n: 3, title: "Approved, awaiting 1:30am", hue: "var(--sec-approved)" },
-    { n: 4, title: "Blocked / manual", hue: "var(--sec-blocked)" },
-    { n: 7, title: "Groomed, awaiting promotion", hue: "var(--sec-promote)" },
-    { n: 5, title: "Ready / queued", hue: "var(--sec-ready)" },
-    { n: 6, title: "Captured (not yet groomed)", hue: "var(--sec-captured)" }
+    { n: 1, title: "Needs decision", hue: "var(--sec-decision)", blurb: "Reviewed work waiting on your yes or no. GREEN = one tap; RED = read the diff first." },
+    { n: 2, title: "Awaiting reviewer", hue: "var(--sec-review)", blurb: "Agent work done, no verdict posted yet. Nothing to do here." },
+    { n: 3, title: "Approved, awaiting 1:30am", hue: "var(--sec-approved)", blurb: "Approved; merges automatically at 1:30AM. Watch only." },
+    { n: 4, title: "Blocked / manual", hue: "var(--sec-blocked)", blurb: "Stuck, contradictory, or hands-only items. Read each card." },
+    { n: 7, title: "Groomed, awaiting promotion", hue: "var(--sec-promote)", blurb: "Groomed specs. Promote to hand one to tonight's runner." },
+    { n: 5, title: "Ready / queued", hue: "var(--sec-ready)", blurb: "Promoted, waiting for the runner. Run next jumps the line." },
+    { n: 6, title: "Captured (not yet groomed)", hue: "var(--sec-captured)", blurb: "Raw captures. The nightly groomer expands these into specs." }
   ];
 
   function renderBoard(sections, warnings, verdictData, totalCount) {
@@ -913,7 +923,7 @@
       var sd = SECTION_DEFS[i];
       var items = sections[sd.n];
       if (!items || !items.length) continue;
-      html += '<section class="board-section" style="--sec:' + sd.hue + '"><h2>' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2><div class="card-list">';
+      html += '<section class="board-section" style="--sec:' + sd.hue + '"><h2>' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2><div class="sec-blurb">' + escapeHtml(sd.blurb) + '</div><div class="card-list">';
       for (var j = 0; j < items.length; j++) {
         var issue = items[j];
         if (sd.n === 1) {
