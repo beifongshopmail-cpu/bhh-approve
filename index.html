@@ -12,8 +12,8 @@
 <title>bhh-ops approvals</title>
 <style>
   :root {
-    --bg:        #0b0b0d;
-    --surface:   #16171a;
+    --bg:        #000000;
+    --surface:   #0d0d10;
     --surface-2: #1e2024;
     --line:      #2b2e34;
     --line-soft: #212429;
@@ -41,16 +41,15 @@
     --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
             "Helvetica Neue", Arial, sans-serif;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    --shadow-card: inset 0 1px 0 rgba(255,255,255,0.03),
-                   0 6px 20px rgba(0,0,0,0.35);
     --sec-decision:  #d4f04a;
-    --sec-review:    #a78bfa;
-    --sec-approved:  #3ecfb2;
-    --sec-blocked:   #f06ac8;
-    --sec-promote:   #4dd6f0;
-    --sec-ready:     #6aa2f7;
-    --sec-captured:  #9aa3b2;
+    --sec-review:    #7aa2ff;
+    --sec-approved:  #ffc043;
+    --sec-blocked:   #ff7a5c;
+    --sec-promote:   #d98cff;
+    --sec-ready:     #4fdcc8;
+    --sec-captured:  #8f96a3;
     --sec-neutral:   #9aa3b2;
+    --ink-on-sec:    #0b0b0d;
   }
   :root {
     --green-bg: #16301f;
@@ -124,27 +123,39 @@
 
   .add-queue {
     background: var(--surface);
-    border: 1px solid var(--line-soft);
+    border: 1px solid rgba(255,255,255,0.07);
     border-radius: var(--r-lg);
-    padding: var(--s-4);
-    margin-bottom: var(--s-4);
+    overflow: hidden;
+    padding: 0;
+    margin-bottom: 14px;
   }
-  .add-queue summary {
-    padding: 12px 10px;
+  .add-queue > summary {
+    background: var(--sec-neutral);
+    color: var(--ink-on-sec);
+    margin: 0;
+    padding: 14px 16px;
     min-height: 44px;
     display: flex;
     align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    text-transform: none;
     cursor: pointer;
-    font-weight: 600;
     list-style: none;
-    background: color-mix(in srgb, var(--sec) 12%, transparent);
-    border-left: 3px solid var(--sec);
-    border-radius: var(--r-sm);
   }
-  .add-queue summary::-webkit-details-marker { display: none; }
-  .add-queue summary::before { content: "+ "; }
-  .add-queue[open] summary::before { content: "- "; }
-  #addQueueForm { padding-bottom: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .add-queue > summary::-webkit-details-marker { display: none; }
+  .add-queue > summary::after {
+    content: "\25be";
+    color: var(--ink-on-sec);
+    flex: 0 0 auto;
+    margin-left: auto;
+    opacity: 0.75;
+    transition: transform 0.15s ease;
+  }
+  .add-queue[open] > summary::after { transform: rotate(180deg); }
+  #addQueueForm { padding: 8px 14px 14px; display: flex; flex-direction: column; gap: 10px; }
   #addQueueForm label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--text-dim); }
   #addQueueForm button[type="submit"] {
     min-height: var(--tap);
@@ -185,7 +196,7 @@
     background: transparent;
     border: 1px solid currentColor;
   }
-  #runControlsBody { padding-bottom: 12px; }
+  #runControlsBody { padding: 8px 14px 14px; }
   .run-controls-feed {
     margin-top: 14px;
     background: var(--surface);
@@ -242,67 +253,96 @@
   .setup-card .row { display: flex; gap: 8px; margin-top: 10px; }
   .setup-card input[type="password"] { flex: 1; }
 
-  .board-section { margin-bottom: 20px; }
+  .board-section {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    padding: 0;
+    margin-bottom: 14px;
+  }
   .board-section h2 {
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.10em;
-    color: var(--text-dim);
-    text-transform: uppercase;
-    margin: var(--s-6) 0 var(--s-3);
-    background: color-mix(in srgb, var(--sec) 12%, transparent);
-    border-left: 3px solid var(--sec);
-    border-radius: var(--r-sm);
-    padding: 8px 10px;
-    cursor: pointer;
-    min-height: var(--tap);
+    background: var(--sec);
+    color: var(--ink-on-sec);
+    margin: 0;
+    padding: 14px 16px;
+    min-height: 44px;
     display: flex;
     align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    text-transform: none;
+    cursor: pointer;
   }
-  .board-section h2::before {
-    content: "";
-    display: inline-block;
-    width: 6px;
-    height: 6px;
-    border-style: solid;
-    border-color: var(--sec);
-    border-width: 2px 2px 0 0;
-    margin-right: var(--s-2);
-    vertical-align: middle;
-    transform: rotate(45deg);
+  .board-section h2::after {
+    content: "\25be";
+    color: var(--ink-on-sec);
+    flex: 0 0 auto;
+    opacity: 0.75;
     transition: transform 0.15s ease;
   }
-  .board-section:not(.collapsed) h2::before {
-    transform: rotate(135deg);
+  .board-section:not(.collapsed) h2::after {
+    transform: rotate(180deg);
   }
+  .sec-title { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
   .collapsed .sec-body { display: none; }
-  .sec-blurb {
-    margin: 4px 0 0 0;
-    font-size: 12px;
-    font-weight: 400;
-    letter-spacing: normal;
-    text-transform: none;
-    color: var(--text-dim);
-  }
   .count-pill {
-    display: inline-block; margin-left: var(--s-2);
-    min-width: 20px; padding: 1px 7px;
-    border-radius: var(--r-pill);
-    background: color-mix(in srgb, var(--sec) 18%, transparent);
-    border: 1px solid color-mix(in srgb, var(--sec) 35%, transparent);
+    flex: 0 0 auto;
+    background: #0b0b0d;
     color: var(--sec);
-    font-size: 11px; font-weight: 700; letter-spacing: 0;
-    text-transform: none; text-align: center;
+    border-radius: var(--r-pill);
+    padding: 2px 9px;
+    font-size: 12px;
+    font-weight: 700;
   }
-  .card-list { display: flex; flex-direction: column; gap: var(--s-3); }
+  .card-list { display: flex; flex-direction: column; gap: 8px; padding: 8px; }
   .card {
-    background: var(--surface);
-    border: 1px solid var(--line-soft);
-    border-radius: var(--r-lg);
+    background: #141519;
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: 14px;
     padding: var(--s-4);
-    box-shadow: var(--shadow-card);
   }
   .card-flag { border-color: var(--warn); background: var(--amber-bg); }
+
+  .legend {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.07);
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    margin-bottom: 14px;
+  }
+  .legend h2 {
+    background: #1a1b1f;
+    color: var(--text);
+    margin: 0;
+    padding: 14px 16px;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+    cursor: pointer;
+  }
+  .legend .chev { flex: 0 0 auto; opacity: 0.75; transition: transform 0.15s ease; }
+  .legend h2.open .chev { transform: rotate(180deg); }
+  .legend-body { padding: 8px 0 6px; }
+  .legend-row {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    font-size: 13px;
+  }
+  .legend-row p { margin: 2px 0 0 0; color: var(--text-dim); }
+  .legend-swatch {
+    flex: 0 0 auto;
+    width: 14px;
+    height: 14px;
+    border-radius: 4px;
+  }
   .card-header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .issue-link { color: var(--text-dim); text-decoration: none; font-weight: 600; min-height: 0; font-size: 13px; line-height: 1.4; }
   .issue-title { font-size: 16.5px; font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; margin: 0 0 var(--s-2); flex: 1; }
@@ -431,7 +471,6 @@
 
   <details id="addQueue" class="add-queue">
     <summary style="--sec: var(--sec-neutral)">Add to queue</summary>
-    <div class="sec-blurb">Drop a one-line task; the groomer specs it overnight.</div>
     <form id="addQueueForm">
       <label>Title
         <input type="text" id="aqTitle" required>
@@ -445,7 +484,6 @@
 
   <details id="runControls" class="add-queue">
     <summary style="--sec: var(--sec-neutral)">Run controls</summary>
-    <div class="sec-blurb">Start, pace, or skip tonight's run.</div>
     <div id="runControlsBody">
       <p id="rcNoControl" class="no-verdict hidden">No control issue found</p>
       <form id="runControlsForm">
@@ -481,6 +519,11 @@
     </div>
   </div>
 
+  <section class="legend" id="legend">
+    <h2 id="legendToggle">What am I looking at? <span class="chev">&#9662;</span></h2>
+    <div class="legend-body" id="legendBody" hidden></div>
+  </section>
+
   <main id="board"></main>
 
   <footer>
@@ -508,6 +551,8 @@
   var addQueueForm = document.getElementById("addQueueForm");
   var aqTitleEl = document.getElementById("aqTitle");
   var aqNotesEl = document.getElementById("aqNotes");
+  var legendToggleEl = document.getElementById("legendToggle");
+  var legendBodyEl = document.getElementById("legendBody");
 
   var runControlsEl = document.getElementById("runControls");
   var rcNoControlEl = document.getElementById("rcNoControl");
@@ -932,6 +977,20 @@
     { n: 6, title: "Captured (not yet groomed)", hue: "var(--sec-captured)", blurb: "Raw captures. The nightly groomer expands these into specs." }
   ];
 
+  function renderLegend() {
+    var html = "";
+    for (var i = 0; i < SECTION_DEFS.length; i++) {
+      var sd = SECTION_DEFS[i];
+      html += '<div class="legend-row"><span class="legend-swatch" style="background:' + sd.hue + '"></span>'
+        + '<div><b>' + escapeHtml(sd.title) + '</b><p>' + escapeHtml(sd.blurb) + '</p></div></div>';
+    }
+    html += '<div class="legend-row"><span class="legend-swatch" style="background:var(--sec-neutral)"></span>'
+      + '<div><b>Add to queue</b><p>Drop a one-line task; the groomer specs it overnight.</p></div></div>';
+    html += '<div class="legend-row"><span class="legend-swatch" style="background:var(--sec-neutral)"></span>'
+      + '<div><b>Run controls</b><p>Start, pace, or skip tonight\'s run.</p></div></div>';
+    legendBodyEl.innerHTML = html;
+  }
+
   function renderBoard(sections, warnings, verdictData, totalCount) {
     if (totalCount === 0) {
       boardEl.innerHTML = '<p class="empty">Nothing in the pipeline.</p>';
@@ -944,8 +1003,7 @@
       if (!items || !items.length) continue;
       var collapsedClass = openSections.has(sd.n) ? "" : " collapsed";
       html += '<section class="board-section' + collapsedClass + '" style="--sec:' + sd.hue + '">'
-        + '<h2 data-sec="' + sd.n + '" role="button" tabindex="0">' + escapeHtml(sd.title) + '<span class="count-pill">' + items.length + '</span></h2>'
-        + '<div class="sec-blurb">' + escapeHtml(sd.blurb) + '</div>'
+        + '<h2 data-sec="' + sd.n + '" role="button" tabindex="0"><span class="sec-title">' + escapeHtml(sd.title) + '</span><span class="count-pill">' + items.length + '</span></h2>'
         + '<div class="sec-body"><div class="card-list">';
       for (var j = 0; j < items.length; j++) {
         var issue = items[j];
@@ -1198,6 +1256,11 @@
 
   refreshBtn.addEventListener("click", function () { loadBoard(); });
 
+  legendToggleEl.addEventListener("click", function () {
+    legendBodyEl.hidden = !legendBodyEl.hidden;
+    legendToggleEl.classList.toggle("open", !legendBodyEl.hidden);
+  });
+
   addQueueForm.addEventListener("submit", function (e) {
     e.preventDefault();
     var title = aqTitleEl.value.trim();
@@ -1366,6 +1429,7 @@
   // ---- init ----
 
   function init() {
+    renderLegend();
     var token = getToken();
     if (!token) {
       openSetup();
