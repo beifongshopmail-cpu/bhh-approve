@@ -48,8 +48,9 @@
     --sec-promote:   #ff7ae0;
     --sec-ready:     #00e5b0;
     --sec-captured:  #8a94a6;
-    --sec-neutral:   #9aa3b2;
+    --sec-neutral:   #2a2d33;
     --ink-on-sec:    #0b0b0d;
+    --ink-on-neutral: #e8e8e8;
   }
   :root {
     --green-bg: #16301f;
@@ -124,14 +125,14 @@
   .add-queue {
     background: var(--surface);
     border: 1px solid rgba(255,255,255,0.07);
-    border-radius: var(--r-lg);
+    border-radius: 14px;
     overflow: hidden;
     padding: 0;
     margin-bottom: 14px;
   }
   .add-queue > summary {
     background: var(--sec-neutral);
-    color: var(--ink-on-sec);
+    color: var(--ink-on-neutral);
     margin: 0;
     padding: 14px 16px;
     min-height: 44px;
@@ -148,7 +149,7 @@
   .add-queue > summary::-webkit-details-marker { display: none; }
   .add-queue > summary::after {
     content: "\25be";
-    color: var(--ink-on-sec);
+    color: var(--ink-on-neutral);
     flex: 0 0 auto;
     margin-left: auto;
     opacity: 0.75;
@@ -256,7 +257,7 @@
   .board-section {
     background: var(--surface);
     border: 1px solid rgba(255,255,255,0.07);
-    border-radius: var(--r-lg);
+    border-radius: 14px;
     overflow: hidden;
     padding: 0;
     margin-bottom: 14px;
@@ -309,7 +310,7 @@
   .legend {
     background: var(--surface);
     border: 1px solid rgba(255,255,255,0.07);
-    border-radius: var(--r-lg);
+    border-radius: 14px;
     overflow: hidden;
     margin-bottom: 14px;
   }
