@@ -419,6 +419,21 @@
   }
   .card-flag { border-color: var(--warn); background: var(--amber-bg); }
 
+  .closed-panel { margin-top: 10px; }
+  .closed-panel > summary { color: #8b9199; }
+  .closed-panel .caret { color: #8b9199; }
+  .closed-pill {
+    margin-left: auto;
+    font-family: var(--mono); font-size: 10.5px; letter-spacing: 1px;
+    color: var(--text-dim); background: rgba(255,255,255,.06);
+    border-radius: var(--r-pill); padding: 3px 9px;
+  }
+  .closed-row-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .closed-num { font-family: var(--mono); font-size: 12px; color: var(--text-dim); }
+  .closed-time { margin-left: auto; font-family: var(--mono); font-size: 11px; color: #6f7680; }
+  .closed-title { margin: 6px 0 0; font-size: 14.5px; color: var(--text); line-height: 1.3; }
+  .b-merged { color:#a78bfa; border-color:#3d2f5c; background:#1a1526; }
+
   .legend { margin-top: 10px; }
   .legend > h2 { color: #8b9199; }
   .legend .caret { color: #8b9199; }
@@ -652,6 +667,14 @@
     <main id="board"></main>
   </div>
 
+  <details id="closedPanel" class="panel-full closed-panel term-panel">
+    <summary><span class="caret">~</span> Closed<span class="closed-pill" id="closedPillEl">TAP TO LOAD</span></summary>
+    <div id="closedPanelBody" class="panel-body">
+      <div id="closedList" class="card-list"></div>
+      <div class="note">20 MOST RECENT BY UPDATED</div>
+    </div>
+  </details>
+
   <section class="legend term-panel" id="legend">
     <h2 id="legendToggle"><span class="caret">#</span> Reference</h2>
     <div class="legend-body panel-body" id="legendBody" hidden></div>
@@ -699,6 +722,11 @@
   var rcFeedEl = document.getElementById("rcFeed");
   var controlIssueNumber = null;
   var controlIssueLoaded = false;
+
+  var closedPanelEl = document.getElementById("closedPanel");
+  var closedPillEl = document.getElementById("closedPillEl");
+  var closedListEl = document.getElementById("closedList");
+
   var openSections = new Set();
   var decisionAutoOpened = false;
   var openDiffs = new Set();
@@ -1110,6 +1138,42 @@
     return html;
   }
 
+  function renderRejectedCard(issue, blocked) {
+    var num = issue.number;
+    var g = parseGroom(issue);
+    var why = blocked ? blocked.why : null;
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    html += '<div class="badges"><span class="badge b-fail">REJECTED</span></div>';
+    if (why) html += '<div class="why">' + escapeHtml(why) + "</div>";
+    html += '<p class="fact-line">Repo: ' + escapeHtml(g.cwd || "MISSING") + "</p>";
+    if (g.branch) html += '<p class="fact-line">Branch: ' + escapeHtml(g.branch) + "</p>";
+    html += '<p class="fact-line">Test: ' + escapeHtml(g.test) + "</p>";
+    html += '<div class="note">Un-reject removes the rejected label only. Verdict labels stay, so the card returns to Decision.</div>';
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-requeue" type="button" data-action="remove-label" data-issue="' + num + '" data-label="rejected">Un-reject</button>';
+    html += '<button class="btn-close" type="button" data-action="close-issue" data-issue="' + num + '">Close</button>';
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
+  function renderConflictCard(issue) {
+    var num = issue.number;
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    html += '<div class="badges"><span class="badge b-fail">CONFLICT</span></div>';
+    html += '<div class="note">Carries both approved and rejected. Nothing happens at 1:30AM until one is removed.</div>';
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-requeue" type="button" data-action="remove-label" data-issue="' + num + '" data-label="rejected">Keep approved</button>';
+    html += '<button class="btn-close" type="button" data-action="remove-label" data-issue="' + num + '" data-label="approved">Keep rejected</button>';
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
   function renderRunnerBlockedCard(issue, blocked) {
     var num = issue.number;
     var g = parseGroom(issue);
@@ -1169,6 +1233,10 @@
     var labels = getLabelNames(issue);
     if (labels.indexOf("manual-only") !== -1) return renderManualOnlyCard(issue);
     if (labels.indexOf("proposed") !== -1 && labels.indexOf("ready") !== -1) return renderHalfPromotedCard(issue);
+    if (labels.indexOf("rejected") !== -1) {
+      if (labels.indexOf("approved") !== -1) return renderConflictCard(issue);
+      return renderRejectedCard(issue, blocked);
+    }
     return renderRunnerBlockedCard(issue, blocked);
   }
 
@@ -1649,6 +1717,33 @@
     });
   }
 
+  function onRemoveLabel(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    var label = btn.dataset.label;
+    var originalText = btn.textContent;
+    armConfirm(btn, "Confirm " + originalText + "?", originalText, function () {
+      btn.disabled = true;
+      apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+        .then(function (fresh) {
+          var freshLabels = getLabelNames(fresh);
+          if (freshLabels.indexOf(label) === -1) {
+            return showStatusThenReload(issueNumber, "state moved -- re-check");
+          }
+          showCardStatus(issueNumber, "updating...");
+          return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels/" + label, {
+            method: "DELETE"
+          }).then(function () {
+            showCardStatus(issueNumber, "updated");
+            scheduleReload(2500);
+          });
+        })
+        .catch(function (err) {
+          handleError(err);
+          btn.disabled = false;
+        });
+    });
+  }
+
   function toggleSectionAt(h2) {
     var secNum = Number(h2.dataset.sec);
     if (openSections.has(secNum)) openSections.delete(secNum);
@@ -1669,6 +1764,7 @@
     else if (btn.dataset.action === "requeue") onRequeue(btn);
     else if (btn.dataset.action === "close-issue") onCloseIssue(btn);
     else if (btn.dataset.action === "finish-promote") onFinishPromote(btn);
+    else if (btn.dataset.action === "remove-label") onRemoveLabel(btn);
   });
 
   boardEl.addEventListener("click", function () {
@@ -1881,6 +1977,90 @@
       controlIssueLoaded = true;
       loadControlIssue();
     }
+  });
+
+  // ---- closed panel ----
+
+  function renderClosedRow(issue) {
+    var num = issue.number;
+    var labels = getLabelNames(issue);
+    var isApproved = labels.indexOf("approved") !== -1;
+    var badgeClass = isApproved ? "b-merged" : "b-manual";
+    var badgeText = isApproved ? "MERGED" : "CLOSED";
+    var ts = issue.closed_at || issue.updated_at;
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += '<div class="closed-row-head">';
+    html += '<span class="closed-num">#' + num + '</span>';
+    html += '<span class="badge ' + badgeClass + '">' + badgeText + '</span>';
+    html += '<span class="closed-time">' + escapeHtml(relativeTime(ts)) + '</span>';
+    html += '</div>';
+    html += '<p class="closed-title">' + escapeHtml(issue.title) + '</p>';
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-requeue" type="button" data-action="reopen-closed" data-issue="' + num + '"' + (isApproved ? " disabled" : "") + ">Reopen</button>";
+    html += '</div>';
+    if (isApproved) {
+      html += '<div class="note">Carries approved. Must be reopened on GitHub.</div>';
+    }
+    html += '</div>';
+    return html;
+  }
+
+  function fetchClosedIssues() {
+    closedListEl.innerHTML = '<p class="loading">Loading...</p>';
+    apiRequest("/repos/" + REPO + "/issues?state=closed&sort=updated&direction=desc&per_page=20")
+      .then(function (issues) {
+        issues = issues.filter(function (i) { return !("pull_request" in i); });
+        closedPillEl.textContent = issues.length + " SHOWN";
+        if (!issues.length) {
+          closedListEl.innerHTML = '<div class="empty-line">Nothing closed recently.</div>';
+          return;
+        }
+        closedListEl.innerHTML = issues.map(renderClosedRow).join("");
+      })
+      .catch(function () {
+        closedPillEl.textContent = "ERROR";
+        closedListEl.innerHTML = '<div class="empty-line">Could not load closed issues.</div>';
+      });
+  }
+
+  function onReopenClosed(btn) {
+    var issueNumber = Number(btn.dataset.issue);
+    armConfirm(btn, "Confirm reopen?", "Reopen", function () {
+      btn.disabled = true;
+      apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
+        .then(function (fresh) {
+          if (fresh.state === "open") {
+            showCardStatus(issueNumber, "state moved -- re-check");
+            btn.disabled = false;
+            return;
+          }
+          showCardStatus(issueNumber, "reopening...");
+          return apiRequest("/repos/" + REPO + "/issues/" + issueNumber, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ state: "open" })
+          }).then(function () {
+            var row = closedListEl.querySelector('.card[data-issue="' + issueNumber + '"]');
+            if (row) row.parentNode.removeChild(row);
+            scheduleReload(2500);
+          });
+        })
+        .catch(function () {
+          showCardStatus(issueNumber, "error -- try again");
+          btn.disabled = false;
+        });
+    });
+  }
+
+  closedPanelEl.addEventListener("toggle", function () {
+    if (closedPanelEl.open) fetchClosedIssues();
+  });
+
+  closedPanelEl.addEventListener("click", function (e) {
+    var btn = e.target.closest('button[data-action="reopen-closed"]');
+    if (!btn) return;
+    onReopenClosed(btn);
   });
 
   // ---- init ----
