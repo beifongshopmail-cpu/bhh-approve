@@ -1671,6 +1671,10 @@
     else if (btn.dataset.action === "finish-promote") onFinishPromote(btn);
   });
 
+  boardEl.addEventListener("click", function () {
+    updateCollapseAllBtn();
+  });
+
   boardEl.addEventListener("keydown", function (e) {
     if (e.key !== "Enter") return;
     var toggleH2 = e.target.closest("h2[data-sec]");
