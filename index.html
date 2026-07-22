@@ -109,6 +109,13 @@
     letter-spacing: 1px; margin-top: 8px;
   }
   .synced.flash { color: var(--accent); }
+  #collapseAllBtn {
+    position: absolute; right: 52px; top: 50%; transform: translateY(-50%);
+    width: 44px; height: 44px; padding: 0; min-width: 44px;
+    border-radius: 10px;
+    background: var(--surface-2); border: 1px solid var(--line);
+    color: var(--text-dim); font-size: 18px;
+  }
   #refreshBtn {
     position: absolute; right: 0; top: 50%; transform: translateY(-50%);
     width: 44px; height: 44px; padding: 0; min-width: 44px;
@@ -180,14 +187,19 @@
 
   #runControlsForm { padding-bottom: 4px; display: flex; flex-direction: column; gap: 10px; }
   #runControlsForm label { display: flex; flex-direction: column; gap: 4px; font-size: 0.9rem; color: var(--text-dim); }
-  #rcSkipBtn {
-    min-height: var(--tap);
-    border-radius: var(--r-md);
-    font-size: 15px;
-    font-weight: 650;
-    background: transparent;
-    border: 1px solid currentColor;
+  .rc-btn {
+    display: inline-flex; align-items: center; justify-content: center;
+    text-align: center;
+    font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
+    text-transform: uppercase; font-weight: 700;
+    min-height: 44px; padding: 0 14px;
+    border-style: solid; border-width: 1px; border-radius: 8px;
   }
+  .rc-btn.rc-btn-sm { min-height: 30px; padding: 0 10px; border-radius: calc(8px * 30 / 44); }
+  #rcRunBtn { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+  #rcPaceBtn { background: transparent; color: var(--accent); border-color: rgba(212,240,74,0.4); }
+  #rcSkipBtn { background: transparent; color: var(--danger); border-color: rgba(255,107,94,0.45); }
+  #rcRefreshBtn { background: transparent; color: var(--accent); border-color: rgba(212,240,74,0.35); }
   #runControlsBody { padding: 8px 14px 14px; }
   .run-controls-feed {
     margin-top: 14px;
@@ -393,13 +405,6 @@
     background: #0d0d10; border: 1px solid #23271a; border-radius: 8px;
   }
   .terminal .card-actions { flex-wrap: wrap; }
-  .terminal .card-actions button {
-    font-family: var(--mono); font-size: 13px; letter-spacing: 0.06em;
-    text-transform: uppercase; border-radius: 8px; font-weight: 700;
-  }
-  .terminal #rcRunBtn { background: var(--accent); color: var(--accent-ink); border: 0; }
-  .terminal #rcPaceBtn { background: transparent; color: var(--accent); border: 1px solid rgba(212,240,74,0.4); }
-  .terminal #rcSkipBtn { background: transparent; color: var(--danger); border: 1px solid rgba(255,107,94,0.45); }
   .terminal .run-controls-feed {
     background: transparent; border: 0; border-top: 1px solid #1b1b1b;
     border-radius: 0; padding: 10px 0 0 0; margin-bottom: 0;
@@ -417,9 +422,15 @@
   .legend { margin-top: 10px; }
   .legend > h2 { color: #8b9199; }
   .legend .caret { color: #8b9199; }
-  .legend-row { display: flex; margin: 9px 0; font-family: var(--mono); font-size: 12px; }
-  .legend-key { flex: 0 0 74px; color: #6f7680; letter-spacing: 1px; }
-  .legend-value { flex: 1 1 auto; color: #9aa1aa; }
+  .legend-row { padding-top: 9px; margin-top: 9px; border-top: 1px solid var(--line); }
+  .legend-row:first-child { padding-top: 0; margin-top: 0; border-top: 0; }
+  .legend-head {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 11.5px; letter-spacing: 1px;
+    color: #9aa1aa;
+  }
+  .legend-swatch { flex: 0 0 auto; width: 10px; height: 10px; border-radius: 2px; }
+  .legend-desc { margin-top: 2px; font-family: var(--mono); font-size: 12px; color: #6f7680; }
   .card-header { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
   .issue-link { color: var(--text-dim); text-decoration: none; font-weight: 600; min-height: 0; font-size: 13px; line-height: 1.4; }
   .issue-title { font-size: 16.5px; font-weight: 650; line-height: 1.3; letter-spacing: -0.01em; margin: 0 0 var(--s-2); flex: 1; }
@@ -581,6 +592,7 @@
       </span>
       <div class="synced" id="syncedEl">SYNCED --:--:--</div>
     </div>
+    <button id="collapseAllBtn" type="button" title="Expand all sections"><span class="glyph">&#43;</span></button>
     <button id="refreshBtn" class="refresh" type="button" title="Refresh"><span class="glyph">&#8635;</span></button>
   </header>
 
@@ -607,16 +619,16 @@
           <input type="number" id="rcRate" min="1" max="6" value="2">
         </label>
         <div class="card-actions">
-          <button id="rcRunBtn" type="button" disabled>Run now</button>
-          <button id="rcPaceBtn" type="button" disabled>Set tonight's pace</button>
-          <button id="rcSkipBtn" type="button" disabled>Skip tonight</button>
+          <button id="rcRunBtn" class="rc-btn" type="button" disabled>Run now</button>
+          <button id="rcPaceBtn" class="rc-btn" type="button" disabled>Set tonight's pace</button>
+          <button id="rcSkipBtn" class="rc-btn" type="button" disabled>Skip tonight</button>
         </div>
       </form>
       <div id="rcStatus" class="card-status"></div>
       <div class="run-controls-feed">
         <div class="run-controls-feed-head">
           <h3>Status feed</h3>
-          <button id="rcRefreshBtn" type="button" disabled>Refresh</button>
+          <button id="rcRefreshBtn" class="rc-btn rc-btn-sm" type="button" disabled>Refresh</button>
         </div>
         <div id="rcFeed"></div>
       </div>
@@ -666,6 +678,7 @@
   var saveTokenBtn = document.getElementById("saveTokenBtn");
   var changeTokenLink = document.getElementById("changeTokenLink");
   var refreshBtn = document.getElementById("refreshBtn");
+  var collapseAllBtn = document.getElementById("collapseAllBtn");
   var addQueueEl = document.getElementById("addQueue");
   var addQueueForm = document.getElementById("addQueueForm");
   var aqTitleEl = document.getElementById("aqTitle");
@@ -690,6 +703,7 @@
   var decisionAutoOpened = false;
   var openDiffs = new Set();
   var reloadTimer = null;
+  var lastRenderArgs = null;
 
   function scheduleReload(delay) {
     if (reloadTimer) clearTimeout(reloadTimer);
@@ -1229,14 +1243,21 @@
     { n: 4, step: "!!", title: "Blocked", hue: "var(--sec-blocked)", blurb: "Stuck, contradictory, or hands-only items. Read each card.", empty: "Nothing blocked." }
   ];
 
+  function renderLegendRow(swatchHue, label, desc) {
+    var head = swatchHue
+      ? '<span class="legend-swatch" style="background:' + swatchHue + '"></span>' + escapeHtml(label)
+      : escapeHtml(label);
+    return '<div class="legend-row"><div class="legend-head">' + head + '</div><div class="legend-desc">' + escapeHtml(desc) + '</div></div>';
+  }
+
   function renderLegend() {
     var html = "";
+    html += renderLegendRow("var(--sec-queue)", "01 Queue", "Drop a one-line task; the groomer specs it overnight.");
     for (var i = 0; i < SECTION_DEFS.length; i++) {
       var sd = SECTION_DEFS[i];
-      html += '<div class="legend-row"><div class="legend-key">' + escapeHtml(sd.step + " " + sd.title) + '</div><div class="legend-value">' + escapeHtml(sd.blurb) + '</div></div>';
+      html += renderLegendRow(sd.hue, sd.step + " " + sd.title, sd.blurb);
     }
-    html = '<div class="legend-row"><div class="legend-key">01 Queue</div><div class="legend-value">Drop a one-line task; the groomer specs it overnight.</div></div>' + html;
-    html += '<div class="legend-row"><div class="legend-key">Terminal</div><div class="legend-value">Start, pace, or skip tonight\'s run.</div></div>';
+    html += renderLegendRow(null, "Terminal", "Start, pace, or skip tonight's run.");
     legendBodyEl.innerHTML = html;
   }
 
@@ -1274,6 +1295,28 @@
       html += "</div></section>";
     }
     boardEl.innerHTML = html;
+    updateCollapseAllBtn();
+  }
+
+  function updateCollapseAllBtn() {
+    if (openSections.size > 0) {
+      collapseAllBtn.innerHTML = '<span class="glyph">&#8722;</span>';
+      collapseAllBtn.title = "Collapse all sections";
+    } else {
+      collapseAllBtn.innerHTML = '<span class="glyph">&#43;</span>';
+      collapseAllBtn.title = "Expand all sections";
+    }
+  }
+
+  function onToggleAllSections() {
+    if (openSections.size > 0) {
+      openSections.clear();
+    } else {
+      for (var i = 0; i < SECTION_DEFS.length; i++) openSections.add(SECTION_DEFS[i].n);
+    }
+    if (lastRenderArgs) {
+      renderBoard(lastRenderArgs[0], lastRenderArgs[1], lastRenderArgs[2], lastRenderArgs[3], lastRenderArgs[4]);
+    }
   }
 
   // ---- board load ----
@@ -1345,6 +1388,7 @@
         });
 
         return Promise.all(fetches.concat(blockedFetches)).then(function () {
+          lastRenderArgs = [sections, warnings, verdictData, blockedData, issues.length];
           renderBoard(sections, warnings, verdictData, blockedData, issues.length);
           markSynced();
         });
@@ -1662,6 +1706,8 @@
     refreshBtn.classList.add("busy");
     loadBoard();
   });
+
+  collapseAllBtn.addEventListener("click", onToggleAllSections);
 
   legendToggleEl.addEventListener("click", function () {
     legendBodyEl.hidden = !legendBodyEl.hidden;
