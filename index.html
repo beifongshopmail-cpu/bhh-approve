@@ -1727,16 +1727,18 @@
       apiRequest("/repos/" + REPO + "/issues/" + issueNumber)
         .then(function (fresh) {
           var freshLabels = getLabelNames(fresh);
-          if (freshLabels.indexOf(label) === -1) {
-            return showStatusThenReload(issueNumber, "state moved -- re-check");
-          }
+          var labelAbsent = freshLabels.indexOf(label) === -1;
           showCardStatus(issueNumber, "updating...");
           return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels/" + label, {
             method: "DELETE"
-          }).then(function () {
-            showCardStatus(issueNumber, "updated");
-            scheduleReload(2500);
+          }).catch(function (err) {
+            if (labelAbsent) return null;
+            throw err;
           });
+        })
+        .then(function () {
+          showCardStatus(issueNumber, "updated");
+          scheduleReload(2500);
         })
         .catch(function (err) {
           handleError(err);
