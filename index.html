@@ -647,6 +647,12 @@
         </div>
         <div id="rcFeed"></div>
       </div>
+      <div class="run-controls-feed">
+        <div class="run-controls-feed-head">
+          <h3>Last run</h3>
+        </div>
+        <div id="rcReceipt"></div>
+      </div>
     </div>
   </details>
 
@@ -720,6 +726,7 @@
   var rcStatusEl = document.getElementById("rcStatus");
   var rcRefreshBtn = document.getElementById("rcRefreshBtn");
   var rcFeedEl = document.getElementById("rcFeed");
+  var rcReceiptEl = document.getElementById("rcReceipt");
   var controlIssueNumber = null;
   var controlIssueLoaded = false;
 
@@ -728,7 +735,6 @@
   var closedListEl = document.getElementById("closedList");
 
   var openSections = new Set();
-  var decisionAutoOpened = false;
   var openDiffs = new Set();
   var reloadTimer = null;
   var lastRenderArgs = null;
@@ -1426,11 +1432,6 @@
           if (c.warning) warnings[issues[i].number] = c.warning;
         }
 
-        if (!decisionAutoOpened) {
-          if (sections[1].length) openSections.add(1);
-          decisionAutoOpened = true;
-        }
-
         var verdictData = {};
         var fetches = sections[1].map(function (issue) {
           return apiRequest("/repos/" + REPO + "/issues/" + issue.number + "/comments?per_page=100")
@@ -1912,6 +1913,37 @@
       });
   }
 
+  function loadReceipt() {
+    return apiRequest("/repos/" + REPO + "/issues?state=open&labels=receipt&per_page=100")
+      .then(function (issues) {
+        issues = issues.filter(function (i) { return !("pull_request" in i); });
+        if (!issues.length) {
+          rcReceiptEl.innerHTML = '<p class="no-verdict">no receipt yet</p>';
+          return;
+        }
+        var body = issues[0].body || "";
+        if (!body.trim()) {
+          rcReceiptEl.innerHTML = '<p class="no-verdict">no receipt yet</p>';
+          return;
+        }
+        var lines = body.split(/\r?\n/);
+        var markers = [];
+        for (var i = 0; i < lines.length; i++) {
+          if (lines[i].indexOf("=== ") === 0) markers.push(i);
+        }
+        var cut = markers.length >= 2 ? markers[1] : lines.length;
+        var block = lines.slice(0, cut).join("\n").trim();
+        if (!block) {
+          rcReceiptEl.innerHTML = '<p class="no-verdict">no receipt yet</p>';
+          return;
+        }
+        rcReceiptEl.innerHTML = '<pre class="diff-pre">' + escapeHtml(block) + "</pre>";
+      })
+      .catch(function () {
+        rcReceiptEl.innerHTML = '<p class="no-verdict">no receipt yet</p>';
+      });
+  }
+
   function postControlComment(text) {
     setControlButtonsEnabled(false);
     rcStatusEl.textContent = "";
@@ -1923,6 +1955,7 @@
       rcStatusEl.textContent = "Posted: " + text;
       setControlButtonsEnabled(true);
       loadFeed();
+      loadReceipt();
     }).catch(function (err) {
       handleError(err);
       setControlButtonsEnabled(true);
@@ -1970,12 +2003,13 @@
     });
   });
 
-  rcRefreshBtn.addEventListener("click", function () { loadFeed(); });
+  rcRefreshBtn.addEventListener("click", function () { loadFeed(); loadReceipt(); });
 
   runControlsEl.addEventListener("toggle", function () {
     if (runControlsEl.open && !controlIssueLoaded) {
       controlIssueLoaded = true;
       loadControlIssue();
+      loadReceipt();
     }
   });
 
