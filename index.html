@@ -1732,7 +1732,7 @@
           return apiRequest("/repos/" + REPO + "/issues/" + issueNumber + "/labels/" + label, {
             method: "DELETE"
           }).catch(function (err) {
-            if (labelAbsent) return null;
+            if (labelAbsent && err && err.type === "network") { return null; }
             throw err;
           });
         })
