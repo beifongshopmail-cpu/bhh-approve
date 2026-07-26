@@ -637,8 +637,10 @@
           <button id="rcRunBtn" class="rc-btn" type="button" disabled>Run now</button>
           <button id="rcPaceBtn" class="rc-btn" type="button" disabled>Set tonight's pace</button>
           <button id="rcSkipBtn" class="rc-btn" type="button" disabled>Skip tonight</button>
+          <button id="rcSetDefaultBtn" class="rc-btn" type="button" disabled>Set default</button>
         </div>
       </form>
+      <div id="rcDefaults" class="card-status"></div>
       <div id="rcStatus" class="card-status"></div>
       <div class="run-controls-feed">
         <div class="run-controls-feed-head">
@@ -723,11 +725,14 @@
   var rcRunBtn = document.getElementById("rcRunBtn");
   var rcPaceBtn = document.getElementById("rcPaceBtn");
   var rcSkipBtn = document.getElementById("rcSkipBtn");
+  var rcSetDefaultBtn = document.getElementById("rcSetDefaultBtn");
   var rcStatusEl = document.getElementById("rcStatus");
+  var rcDefaultsEl = document.getElementById("rcDefaults");
   var rcRefreshBtn = document.getElementById("rcRefreshBtn");
   var rcFeedEl = document.getElementById("rcFeed");
   var rcReceiptEl = document.getElementById("rcReceipt");
   var controlIssueNumber = null;
+  var controlIssueBody = null;
   var controlIssueLoaded = false;
 
   var closedPanelEl = document.getElementById("closedPanel");
@@ -1866,7 +1871,42 @@
     rcRunBtn.disabled = !enabled;
     rcPaceBtn.disabled = !enabled;
     rcSkipBtn.disabled = !enabled;
+    rcSetDefaultBtn.disabled = !enabled;
     rcRefreshBtn.disabled = !enabled;
+  }
+
+  var DEFAULTS_MARKER = "=== DEFAULTS ===";
+  var DEFAULTS_LINE_RE = /^([a-zA-Z]+):\s*(.*)$/;
+
+  function parseDefaults(body) {
+    if (!body) return null;
+    var lines = body.split(/\r?\n/);
+    var idx = -1;
+    for (var i = 0; i < lines.length; i++) {
+      if (lines[i].trim() === DEFAULTS_MARKER) { idx = i; break; }
+    }
+    if (idx === -1) return null;
+    var hours = null, rate = null;
+    for (var j = idx + 1; j < lines.length; j++) {
+      var t = lines[j].trim();
+      if (t === "") break;
+      var m = t.match(DEFAULTS_LINE_RE);
+      if (!m) break;
+      var key = m[1].toLowerCase();
+      if (key === "hours") hours = m[2].trim();
+      else if (key === "rate") rate = m[2].trim();
+    }
+    if (!hours || !rate) return null;
+    return { hours: hours, rate: rate };
+  }
+
+  function renderDefaults() {
+    try {
+      var d = parseDefaults(controlIssueBody);
+      rcDefaultsEl.textContent = d ? ("DEFAULTS " + d.hours + "h / " + d.rate + " per hr") : "DEFAULTS not set";
+    } catch (e) {
+      rcDefaultsEl.textContent = "DEFAULTS not set";
+    }
   }
 
   function loadFeed() {
@@ -1901,16 +1941,22 @@
         issues = issues.filter(function (i) { return !("pull_request" in i); });
         if (!issues.length) {
           controlIssueNumber = null;
+          controlIssueBody = null;
+          renderDefaults();
           rcNoControlEl.classList.remove("hidden");
           rcFeedEl.innerHTML = "";
           return;
         }
         controlIssueNumber = issues[0].number;
+        controlIssueBody = issues[0].body;
+        renderDefaults();
         setControlButtonsEnabled(true);
         return loadFeed();
       })
       .catch(function (err) {
         controlIssueNumber = null;
+        controlIssueBody = null;
+        renderDefaults();
         handleError(err);
       });
   }
@@ -2002,6 +2048,15 @@
     if (!controlIssueNumber) return;
     armConfirm(rcSkipBtn, "Confirm skip?", "Skip tonight", function () {
       postControlComment("SKIP");
+    });
+  });
+
+  rcSetDefaultBtn.addEventListener("click", function () {
+    if (!controlIssueNumber) return;
+    var hr = getHoursRate();
+    if (!hr) { rcStatusEl.textContent = "Invalid hours/rate"; return; }
+    armConfirm(rcSetDefaultBtn, "Confirm set default?", "Set default", function () {
+      postControlComment("DEFAULT hours=" + hr.hours + " rate=" + hr.rate);
     });
   });
 
