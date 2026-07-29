@@ -1041,6 +1041,9 @@
     if (has("approved") && has("rejected")) {
       return { section: 4, warning: "This issue has both the approved and rejected labels. Resolve manually on GitHub." };
     }
+    if (has("approved") && has("apply-halted")) {
+      return { section: 4, warning: "Stopped retrying after repeated identical failures. Read the latest comment on the issue, fix the cause, then clear the halt to retry. Your approval is unchanged." };
+    }
     if (has("proposed") && has("ready")) {
       return { section: 4, warning: "Half-promoted: carries both proposed and ready. The runner skips these. Remove proposed on GitHub." };
     }
@@ -1171,6 +1174,20 @@
     return html;
   }
 
+  function renderHaltedCard(issue) {
+    var num = issue.number;
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    html += '<div class="badges"><span class="badge b-fail">HALTED</span></div>';
+    html += '<div class="note">' + escapeHtml("Stopped retrying after repeated identical failures. Read the latest comment on the issue, fix the cause, then clear the halt to retry. Your approval is unchanged.") + "</div>";
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-requeue" type="button" data-action="remove-label" data-issue="' + num + '" data-label="apply-halted">Clear halt</button>';
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
   function renderConflictCard(issue) {
     var num = issue.number;
     var html = '<div class="card" data-issue="' + num + '">';
@@ -1243,6 +1260,7 @@
 
   function renderBlockedCard(issue, blocked) {
     var labels = getLabelNames(issue);
+    if (labels.indexOf("apply-halted") !== -1) return renderHaltedCard(issue);
     if (labels.indexOf("manual-only") !== -1) return renderManualOnlyCard(issue);
     if (labels.indexOf("proposed") !== -1 && labels.indexOf("ready") !== -1) return renderHalfPromotedCard(issue);
     if (labels.indexOf("rejected") !== -1) {
