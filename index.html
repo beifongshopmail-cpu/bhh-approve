@@ -957,6 +957,42 @@
     };
   }
 
+  // ---- adjudication comment parsing ----
+
+  var ADJUDICATION_LINE_RE = /^([a-zA-Z0-9_-]+):\s*(.*)$/;
+
+  function findAdjudicationComment(comments) {
+    var found = null;
+    for (var i = 0; i < comments.length; i++) {
+      var body = comments[i].body || "";
+      var firstLine = body.split("\n")[0].trim();
+      if (firstLine === "ADJUDICATION") found = body;
+    }
+    return found;
+  }
+
+  function parseAdjudication(body) {
+    if (body == null) return null;
+    var lines = body.split("\n");
+    if (lines[0].trim() !== "ADJUDICATION") return null;
+    var facts = {};
+    var reasons = [];
+    var i = 1;
+    for (; i < lines.length; i++) {
+      var t = lines[i].trim();
+      if (t === "") continue;
+      var m = t.match(ADJUDICATION_LINE_RE);
+      if (!m) break;
+      if (m[1].toLowerCase() === "reasons") { i++; break; }
+      facts[m[1].toLowerCase()] = m[2].trim();
+    }
+    for (; i < lines.length; i++) {
+      var t2 = lines[i].trim();
+      if (t2.indexOf("- ") === 0) reasons.push(t2.slice(2).trim());
+    }
+    return { facts: facts, reasons: reasons };
+  }
+
   // ---- issue-body section parsing (JS port of Get-Section / Get-SectionLines) ----
 
   function getSection(body, header) {
@@ -1051,6 +1087,8 @@
     // rejected must keep winning over auto-approved, so a human veto lands in Blocked exactly as it does today.
     if (has("auto-approved") && !has("approved")) return { section: 8 };
     if (has("approved")) return { section: 3 };
+    if (has("adjudicated-merge") && !has("approved") && !has("auto-approved")) return { section: 9 };
+    if (has("adjudicated-flag")) return { section: 1 };
     if (has("verdict-merge") || has("verdict-flag")) return { section: 1 };
     if (has("needs-review")) return { section: 2 };
     if (has("blocked") || has("manual-only")) return { section: 4 };
@@ -1204,6 +1242,39 @@
     return html;
   }
 
+  function renderAdjudicationBlock(adj) {
+    if (!adj) {
+      return '<div class="note">Adjudication reasoning could not be loaded.</div>';
+    }
+    var title = adj.facts && adj.facts["original-title"];
+    var html = '<div class="why">';
+    html += '<p class="fact-line">Original title: ' + escapeHtml(title || "unknown") + "</p>";
+    if (adj.reasons && adj.reasons.length) {
+      html += '<ul class="concerns-list">' + adj.reasons.map(function (r) {
+        return "<li>" + escapeHtml(r) + "</li>";
+      }).join("") + "</ul>";
+    } else {
+      html += '<p class="fact-line">No reasons listed.</p>';
+    }
+    html += "</div>";
+    return html;
+  }
+
+  function renderAdjudicatedMergeCard(issue, adj) {
+    var num = issue.number;
+    var html = '<div class="card" data-issue="' + num + '">';
+    html += renderCardBody(issue);
+    html += '<div class="badges"><span class="badge badge-merge">ADJUDICATED-MERGE</span></div>';
+    html += '<div class="note">' + escapeHtml("Flagged as risky by the first automated check. A second pass read it in full and vouched for it. It merges on its own tonight unless you stop it.") + "</div>";
+    html += renderAdjudicationBlock(adj);
+    html += '<div class="card-status"></div>';
+    html += '<div class="card-actions">';
+    html += '<button class="btn-requeue" type="button" data-action="remove-label" data-issue="' + num + '" data-label="adjudicated-merge">Veto</button>';
+    html += "</div>";
+    html += "</div>";
+    return html;
+  }
+
   function renderConflictCard(issue) {
     var num = issue.number;
     var html = '<div class="card" data-issue="' + num + '">';
@@ -1286,7 +1357,7 @@
     return renderRunnerBlockedCard(issue, blocked);
   }
 
-  function renderNeedsDecisionCard(issue, v) {
+  function renderNeedsDecisionCard(issue, v, adj) {
     var num = issue.number;
     var hasVerdict = !!(v && v.verdict);
     var cardClasses = "card" + (hasVerdict && v.verdict === "FLAG" ? " card-flag" : "");
@@ -1335,6 +1406,10 @@
       }
     }
 
+    if (getLabelNames(issue).indexOf("adjudicated-flag") !== -1) {
+      html += renderAdjudicationBlock(adj);
+    }
+
     html += '<div class="card-status"></div>';
     var sha = hasVerdict ? (v.sha || "") : "";
     var confirmAttr = hasVerdict && v.confirmRequired ? "1" : "0";
@@ -1354,6 +1429,7 @@
     { n: 2, step: "05", title: "Review", hue: "var(--sec-review)", blurb: "Agent work done, no verdict posted yet. Nothing to do here.", empty: "No branches waiting on the reviewer." },
     { n: 1, step: "06", title: "Decision", hue: "var(--sec-decision)", blurb: "Waiting on your yes or no. Green = one tap; red = read the diff first.", empty: "No verdicts waiting on you." },
     { n: 8, step: "06b", title: "Auto-approved", hue: "var(--sec-approved)", blurb: "The system approved these. They merge at 1:30AM unless you veto.", empty: "Nothing auto-approved." },
+    { n: 9, step: "06c", title: "Adjudicated", hue: "var(--sec-approved)", blurb: "A second pass overturned a RED tier and vouched for it. Merges tonight unless vetoed.", empty: "Nothing adjudicated tonight." },
     { n: 3, step: "07", title: "Approved", hue: "var(--sec-approved)", blurb: "Approved; merges automatically at 1:30AM. Watch only.", empty: "Nothing waiting for the 1:30AM merge." },
     { n: 4, step: "!!", title: "Blocked", hue: "var(--sec-blocked)", blurb: "Stuck, contradictory, or hands-only items. Read each card.", empty: "Nothing blocked." }
   ];
@@ -1376,7 +1452,7 @@
     legendBodyEl.innerHTML = html;
   }
 
-  function renderBoard(sections, warnings, verdictData, blockedData, totalCount) {
+  function renderBoard(sections, warnings, verdictData, blockedData, totalCount, adjData, adjMergeData) {
     var html = "";
     for (var i = 0; i < SECTION_DEFS.length; i++) {
       var sd = SECTION_DEFS[i];
@@ -1394,7 +1470,7 @@
         for (var j = 0; j < items.length; j++) {
           var issue = items[j];
           if (sd.n === 1) {
-            html += renderNeedsDecisionCard(issue, verdictData[issue.number]);
+            html += renderNeedsDecisionCard(issue, verdictData[issue.number], adjData[issue.number]);
           } else if (sd.n === 5) {
             html += renderReadyCard(issue);
           } else if (sd.n === 7) {
@@ -1403,6 +1479,8 @@
             html += renderBlockedCard(issue, blockedData[issue.number]);
           } else if (sd.n === 8) {
             html += renderAutoApprovedCard(issue);
+          } else if (sd.n === 9) {
+            html += renderAdjudicatedMergeCard(issue, adjMergeData[issue.number]);
           } else {
             html += renderReadOnlyCard(issue, { warning: warnings[issue.number] });
           }
@@ -1432,7 +1510,7 @@
       for (var i = 0; i < SECTION_DEFS.length; i++) openSections.add(SECTION_DEFS[i].n);
     }
     if (lastRenderArgs) {
-      renderBoard(lastRenderArgs[0], lastRenderArgs[1], lastRenderArgs[2], lastRenderArgs[3], lastRenderArgs[4]);
+      renderBoard(lastRenderArgs[0], lastRenderArgs[1], lastRenderArgs[2], lastRenderArgs[3], lastRenderArgs[4], lastRenderArgs[5], lastRenderArgs[6]);
     }
   }
 
@@ -1467,7 +1545,7 @@
       .then(function (issues) {
         issues = issues.filter(function (i) { return !("pull_request" in i); });
 
-        var sections = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [] };
+        var sections = { 1: [], 2: [], 3: [], 4: [], 5: [], 6: [], 7: [], 8: [], 9: [] };
         var warnings = {};
         for (var i = 0; i < issues.length; i++) {
           var c = classify(issues[i]);
@@ -1476,10 +1554,23 @@
         }
 
         var verdictData = {};
+        var adjData = {};
         var fetches = sections[1].map(function (issue) {
           return apiRequest("/repos/" + REPO + "/issues/" + issue.number + "/comments?per_page=100")
             .then(function (comments) {
               verdictData[issue.number] = parseVerdict(comments);
+              adjData[issue.number] = parseAdjudication(findAdjudicationComment(comments));
+            });
+        });
+
+        var adjMergeData = {};
+        var adjMergeFetches = sections[9].map(function (issue) {
+          return apiRequest("/repos/" + REPO + "/issues/" + issue.number + "/comments?per_page=100")
+            .then(function (comments) {
+              adjMergeData[issue.number] = parseAdjudication(findAdjudicationComment(comments));
+            })
+            .catch(function () {
+              adjMergeData[issue.number] = null;
             });
         });
 
@@ -1499,9 +1590,9 @@
             });
         });
 
-        return Promise.all(fetches.concat(blockedFetches)).then(function () {
-          lastRenderArgs = [sections, warnings, verdictData, blockedData, issues.length];
-          renderBoard(sections, warnings, verdictData, blockedData, issues.length);
+        return Promise.all(fetches.concat(blockedFetches, adjMergeFetches)).then(function () {
+          lastRenderArgs = [sections, warnings, verdictData, blockedData, issues.length, adjData, adjMergeData];
+          renderBoard(sections, warnings, verdictData, blockedData, issues.length, adjData, adjMergeData);
           markSynced();
         });
       })
