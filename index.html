@@ -1406,7 +1406,12 @@
       }
     }
 
-    if (getLabelNames(issue).indexOf("adjudicated-flag") !== -1) {
+    var cardLabels = getLabelNames(issue);
+    var isAdjInfo = cardLabels.indexOf("adjudicated-info") !== -1;
+    if (cardLabels.indexOf("adjudicated-flag") !== -1 || isAdjInfo) {
+      if (isAdjInfo) {
+        html += '<div class="note">' + escapeHtml("Reviewed by the adjudicator for information only. It cannot approve this tier. Your decision stands.") + "</div>";
+      }
       html += renderAdjudicationBlock(adj);
     }
 
